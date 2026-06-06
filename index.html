@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.06.1422.
+Prototype version 2026.06.06.1800.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -16,6 +16,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     gtag('config', 'G-P3419RDS1D');
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SolEntropy</title>
@@ -1743,6 +1744,49 @@ Do not copy, distribute, modify, or commercialize without permission.
     let randomStats = loadRandomStats();
     let randomCarryStillAlive = true;
 
+    const SUPABASE_URL = "https://vayhmnprgcbrjnuylxon.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_nu72eTAiDUKvhEPbi7xE1A_jJaW3Y2j";
+
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY
+    );
+
+    let currentPlayer = null;
+
+    async function initPlayer() {
+      let { data: sessionData } = await supabaseClient.auth.getSession();
+
+      if (!sessionData.session) {
+        const { error } = await supabaseClient.auth.signInAnonymously();
+
+        if (error) {
+          console.error("Anonymous sign-in failed:", error);
+          return;
+        }
+
+        sessionData = (await supabaseClient.auth.getSession()).data;
+      }
+
+      currentPlayer = sessionData.session.user;
+
+      await ensurePlayerProfile();
+    }
+
+    async function ensurePlayerProfile() {
+      if (!currentPlayer) return;
+
+      const { error } = await supabaseClient
+        .from("players")
+        .upsert({
+          id: currentPlayer.id
+        });
+
+      if (error) {
+        console.error("Player profile setup failed:", error);
+      }
+    }
+
     function loadProfileStats() {
       const fallback = {
         completedRuns: 0,
@@ -1770,7 +1814,6 @@ Do not copy, distribute, modify, or commercialize without permission.
         }
 
         return stats;
-        return saved ? { ...fallback, ...JSON.parse(saved) } : fallback;
       } catch (err) {
         return fallback;
       }
@@ -3604,6 +3647,7 @@ function closeCompletionModal() {
     }
 
     window.addEventListener("load", () => {
+      initPlayer();
       const seenTutorial =
         localStorage.getItem("entropy.v2026.05.seenTutorial");
 
