@@ -1,0 +1,3626 @@
+<!DOCTYPE html>
+<!--
+SolEntropy
+Copyright © 2026 Brandon Blagg. All rights reserved.
+Prototype version 2026.06.06.1422.
+Do not copy, distribute, modify, or commercialize without permission.
+-->
+<html lang="en">
+<head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-P3419RDS1D"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-P3419RDS1D');
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SolEntropy</title>
+  <style>
+    :root {
+      --cell-w: 92px;
+      --cell-h: 108px;
+      --card-w: 78px;
+      --card-h: 94px;
+      --gap: 12px;
+      --bg-1: #08110f;
+      --bg-2: #10221d;
+      --panel: rgba(255,255,255,.075);
+      --panel-strong: rgba(255,255,255,.115);
+      --line: rgba(255,255,255,.16);
+      --line-soft: rgba(255,255,255,.09);
+      --felt: #2c4738;
+      --felt-dark: #1f3329;
+      --card: #fbfaf5;
+      --card-edge: #d8d0bd;
+      --ink: #141414;
+      --muted: #b8c8c1;
+      --muted-2: #83948d;
+      --accent: #f4d35e;
+      --accent-soft: rgba(244,211,94,.23);
+      --accent-line: rgba(244,211,94,.72);
+      --red: #b4232a;
+      --shadow: 0 20px 60px rgba(0,0,0,.32);
+      --card-shadow: 0 8px 18px rgba(0,0,0,.32), inset 0 0 0 1px rgba(255,255,255,.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+      radial-gradient(circle at top left, rgba(214,186,92,.10), transparent 34rem),
+      radial-gradient(circle at top right, rgba(76,104,88,.12), transparent 36rem),
+      linear-gradient(145deg, #0f1216, #161b20);
+      color: white;
+      min-height: 100vh;
+      padding: 28px;
+      letter-spacing: .01em;
+    }
+
+    .topbar {
+      max-width: 1080px;
+      margin: 0 auto 20px;
+      position: relative;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(32px, 7vw, 52px);
+      line-height: .95;
+      letter-spacing: -.06em;
+      font-weight: 850;
+    }
+
+
+    .logo {
+      margin: 0;
+      font-size: clamp(1.7rem, 3vw, 2.2rem);
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      flex-shrink: 0;
+      opacity: .95;
+      margin-left: -3px;
+    }
+
+    .logo .sol {
+      color: var(--accent);
+      filter: brightness(0.9);
+      opacity: .85;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .tagline {
+      margin: 10px 0 0;
+      color: var(--muted);
+      max-width: 840px;
+      line-height: 1.5;
+      font-size: 15px;
+    }
+
+    .layout {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: auto minmax(300px, 350px);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .board-wrap {
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.045),
+          rgba(255,255,255,.015)
+        ),
+        radial-gradient(
+          circle at center,
+          rgba(255,255,255,.03),
+          transparent 60%
+        ),
+        rgba(17,21,24,.82);
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 20px;
+      width: fit-content;
+      box-shadow: var(--shadow);
+    }
+
+    .section-label {
+      color: var(--muted-2);
+      text-transform: uppercase;
+      letter-spacing: .16em;
+      font-size: 11px;
+      font-weight: 800;
+      margin: 0 0 9px;
+      text-align: center;
+      margin-left: 0px;
+    }
+
+    .foundations {
+      display: grid;
+      grid-template-columns: repeat(4, var(--cell-w));
+      gap: var(--gap);
+      margin-bottom: 22px;
+      padding: 10px;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, var(--cell-w));
+      grid-template-rows: repeat(4, var(--cell-h));
+      gap: var(--gap);
+      background: rgba(12,16,18,.42);
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.08);
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .slot, .cell {
+      width: var(--cell-w);
+      height: var(--cell-h);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      user-select: none;
+    }
+
+    .slot {
+      background:
+        linear-gradient(180deg,
+          rgba(255,255,255,.08),
+          rgba(255,255,255,.03));
+
+      border: 1px dashed rgba(255,255,255,.24);
+
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.08),
+        0 8px 18px rgba(0,0,0,.18);
+
+      backdrop-filter: blur(4px);
+
+      cursor: pointer;
+      flex-direction: column;
+      text-align: center;
+      color: rgba(255,255,255,.68);
+      font-size: 12px;
+      overflow: hidden;
+    }
+
+    .slot::before {
+      content: none;
+    }
+
+    .cell {
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.10);
+    }
+
+    .light-square {
+      background:
+        linear-gradient(
+          145deg,
+          rgba(186, 190, 196, .32),
+          rgba(150, 156, 164, .26)
+        );
+
+      border: 1px solid rgba(255,255,255,.08);
+
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.06),
+        inset 0 -1px 0 rgba(0,0,0,.10);
+    }
+
+    .dark-square {
+      background:
+        linear-gradient(
+          145deg,
+          rgba(74, 80, 88, .46),
+          rgba(52, 58, 66, .40)
+        );
+
+      border: 1px solid rgba(255,255,255,.04);
+
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.03),
+        inset 0 -1px 0 rgba(0,0,0,.18);
+    }
+
+
+    /*.cell::after {
+      content: attr(data-coord);
+      position: absolute;
+      left: 6px;
+      bottom: 5px;
+      color: rgba(255,255,255,.25);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      pointer-events: none;
+    }*/
+
+    .card {
+      width: var(--card-w);
+      height: var(--card-h);
+      transform: translateY(0);
+      background:
+        linear-gradient(180deg, #fffdfa 0%, #f6f0e5 100%);
+      color: var(--ink);
+      border: 1px solid rgba(90,72,48,.22);
+      border-radius: 12px;
+      box-shadow:
+        0 10px 22px rgba(0,0,0,.28),
+        inset 0 1px 0 rgba(255,255,255,.92);
+      cursor: pointer;
+      position: relative;
+      padding: 8px;
+      transition:
+        transform .08s ease,
+        outline .08s ease,
+        box-shadow .08s ease;
+      overflow: hidden;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 8px;
+      border: 1px solid rgba(0,0,0,.055);
+      pointer-events: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .card:hover:not(.selected):not(.dragging) {
+        transform: translateY(-3px);
+
+        box-shadow:
+          0 12px 24px rgba(0,0,0,.36),
+          inset 0 0 0 1px rgba(255,255,255,.5);
+      }
+    }
+
+
+    body.is-dragging-card {
+      cursor: grabbing;
+    }
+
+    .card.dragging {
+      opacity: .92;
+      transform: scale(1.04);
+      z-index: 999;
+      pointer-events: none;
+      position: fixed;
+      left: 0;
+      top: 0;
+      box-shadow:
+        0 18px 34px rgba(0,0,0,.38),
+        inset 0 1px 0 rgba(255,255,255,.92);
+    }
+
+    .drag-origin .card {
+      opacity: .35;
+    }
+
+    .drop-hover {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .card.selected {
+      outline: 4px solid var(--accent);
+      outline-offset: 2px;
+      transform: translateY(-5px);
+    }
+
+    .red { color: var(--red); }
+    .black { color: #121212; }
+
+    .rank {
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -.04em;
+      z-index: 1;
+    }
+
+    .suit {
+      display: none;
+    }
+
+
+    .piece-label {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 7px;
+      z-index: 3;
+      text-align: center;
+      font-size: 10px;
+      line-height: 1;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      font-weight: 900;
+      opacity: .62;
+      pointer-events: none;
+      user-select: none;
+    }
+
+
+    .corner {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      z-index: 3;
+      line-height: .86;
+      text-align: center;
+      font-weight: 900;
+      letter-spacing: -.05em;
+    }
+
+    .corner .rank {
+      font-size: 22px;
+      font-weight: 900;
+    }
+
+    .corner .corner-suit {
+      font-size: 15px;
+      margin-top: 2px;
+      opacity: .9;
+    }
+
+    .piece {
+      position: absolute;
+      top: 4px;
+      right: 6px;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 54px;
+      line-height: 1;
+      font-weight: 900;
+      color: currentColor;
+      opacity: .34;
+      pointer-events: none;
+      user-select: none;
+    }
+
+
+    .legal {
+      border-color: rgba(244,211,94,.95) !important;
+      box-shadow:
+        inset 0 0 0 3px rgba(244,211,94,.30),
+        0 0 0 2px rgba(244,211,94,.35),
+        0 0 26px rgba(244,211,94,.55);
+    }
+
+    .slot.legal {
+  background: rgba(244, 211, 94, 0.18);
+  border-color: rgba(244, 211, 94, 0.95) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(244, 211, 94, 0.28),
+    0 0 0 2px rgba(244, 211, 94, 0.42),
+    0 0 28px rgba(244, 211, 94, 0.65);
+}
+
+.slot.legal::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 18px;
+  border: 3px solid rgba(244, 211, 94, 0.9);
+  pointer-events: none;
+}
+
+.slot.legal .card {
+  outline: 5px solid rgba(244, 211, 94, 0.95);
+  outline-offset: -5px;
+  box-shadow:
+    0 0 34px rgba(244, 211, 94, 0.52),
+    0 0 14px rgba(244, 211, 94, 0.72),
+    0 10px 22px rgba(0, 0, 0, 0.28);
+}
+
+
+    .cell.legal {
+      background:
+        linear-gradient(145deg, rgba(244,211,94,.22), rgba(244,211,94,.08)),
+        linear-gradient(145deg, rgba(255,255,255,.06), rgba(0,0,0,.10));
+      border-color: rgba(244,211,94,.95) !important;
+      box-shadow:
+        inset 0 0 0 3px rgba(244,211,94,.25),
+        0 0 0 2px rgba(244,211,94,.28),
+        0 0 24px rgba(244,211,94,.42);
+    }
+
+    .cell.legal::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 10px;
+      border: 2px solid rgba(244,211,94,.55);
+      pointer-events: none;
+    }
+
+
+    .title-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .mode-switch {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+
+      display: flex;
+      gap: 4px;
+
+      padding: 4px;
+      border-radius: 999px;
+
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+
+      backdrop-filter: blur(6px);
+    }
+
+    .mode-switch button {
+      min-height: unset;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+      font-size: 13px;
+    }
+
+    .mode-switch button.active {
+      background: var(--accent);
+      color: #17150d;
+    }
+
+    .mobile-label {
+      display: none;
+    }
+
+    @media (max-width: 640px) {
+      .desktop-label {
+        display: none;
+      }
+
+      .mobile-label {
+        display: inline;
+      }
+    }
+
+
+    .sidebar {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.095), rgba(255,255,255,.045));
+      border: 1px solid var(--line);
+      border-radius: 26px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .score-card {
+      background: rgba(20,24,28,.72);
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 18px;
+      padding: 15px;
+      margin-bottom: 14px;
+    }
+
+    .analytics-card {
+      background: rgba(0,0,0,.14);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      padding: 15px;
+      margin-bottom: 14px;
+    }
+
+    .analytics-card h3 {
+      margin: 0 0 10px;
+      font-size: 13px;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: white;
+    }
+
+
+    .profile-section-title {
+      text-align: center;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .profile-section {
+      margin-top: 22px;
+      width: 100%;
+    }
+
+    .daily-chart-row {
+      display: grid;
+      grid-template-columns: 32px 1fr 24px;
+      align-items: center;
+      gap: 8px;
+      margin: 5px 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .daily-chart-row span {
+      text-align: center;
+    }
+
+    .daily-chart-track {
+      height: 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      overflow: hidden;
+    }
+
+    .daily-chart-bar {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent);
+    }
+
+    .daily-chart-row strong {
+      color: white;
+      text-align: right;
+    }
+
+    .message,
+    .rules,
+    .log {
+      display: none;
+    }
+
+    .profile-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .profile-actions button {
+      width: 100%;
+    }
+
+    .danger-button {
+      width: auto;
+    }
+
+    .mini-stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 7px 0;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .mini-stat:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .mini-stat strong {
+      color: white;
+      font-weight: 800;
+    }
+
+    .settings-row,
+    .settings-action-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+    }
+
+    .settings-action-row {
+      border-top: 1px solid rgba(255,255,255,.08);
+    }
+
+.settings-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mini-info-button {
+  width: 18px;
+  height: 18px;
+
+  border-radius: 999px;
+
+  padding: 0;
+
+  min-height: unset;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: .75;
+}
+
+.settings-info-bubble {
+  position: absolute;
+  top: 86px;
+  left: 24px;
+  right: 24px;
+
+  display: none;
+
+  padding: 12px 14px;
+  border-radius: 14px;
+
+  background: rgba(10,12,16,.82);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(10px);
+
+  color: rgba(230,235,240,.88);
+  font-size: 13px;
+  line-height: 1.45;
+
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
+  z-index: 10;
+}
+
+.settings-info-bubble.open {
+  display: block;
+}
+
+.settings-info-close {
+  position: absolute;
+
+  top: 8px;
+  right: 8px;
+
+  width: 20px;
+  height: 20px;
+
+  border-radius: 999px;
+
+  padding: 0;
+
+  min-height: unset;
+
+  font-size: 11px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  opacity: .7;
+}
+
+.settings-info-bubble {
+  position: absolute;
+
+  top: 86px;
+  left: 24px;
+  right: 24px;
+
+  display: none;
+
+  padding: 14px 16px 14px 16px;
+}
+
+.settings-action-button {
+  min-height: 36px;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+
+.settings-label {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.settings-subtext {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.toggle-switch {
+  position: relative;
+
+  width: 56px;
+  height: 32px;
+
+  border-radius: 999px;
+
+  padding: 0;
+
+  background: rgba(255,255,255,.10);
+
+  border: 1px solid rgba(255,255,255,.12);
+
+  transition:
+    background .18s ease,
+    border-color .18s ease;
+}
+
+.toggle-knob {
+  position: absolute;
+
+  top: 3px;
+  left: 3px;
+
+  width: 24px;
+  height: 24px;
+
+  border-radius: 999px;
+
+  background: white;
+
+  transition: transform .18s ease;
+}
+
+.toggle-switch.active {
+  background: rgba(244,211,94,.22);
+  border-color: rgba(244,211,94,.34);
+}
+
+.toggle-switch.active .toggle-knob {
+  transform: translateX(24px);
+}
+
+    .entropy-pop {
+      position: fixed;
+      z-index: 6000;
+      pointer-events: none;
+      font-weight: 900;
+      font-size: 18px;
+      color: #ff8a6b;
+      -webkit-text-stroke: 1px rgba(0,0,0,.75);
+      text-shadow:
+        0 2px 10px rgba(0,0,0,.45),
+        0 0 18px rgba(255,138,107,.35);
+      animation: entropyPop .75s ease-out forwards;
+    }
+
+    .entropy-pop.perfect {
+      color: #7fd6ff;
+      -webkit-text-stroke: 1px rgba(0,0,0,.75);
+      text-shadow:
+        0 2px 10px rgba(0,0,0,.45),
+        0 0 18px rgba(127,214,255,.45);
+    }
+
+    @keyframes entropyPop {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, 8px) scale(.9);
+      }
+
+      18% {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1.08);
+      }
+
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -34px) scale(1);
+      }
+    }
+
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .stat:first-child {
+      padding-top: 0;
+    }
+
+    .stat:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .stat strong {
+      color: white;
+    }
+
+    #score {
+      color: var(--accent);
+      font-weight: 900;
+      font-size: 28px;
+      line-height: .8;
+      letter-spacing: -.03em;
+    }
+
+    .objective {
+      background: rgba(244,211,94,.12);
+      border: 1px solid rgba(244,211,94,.28);
+      border-radius: 18px;
+      padding: 14px;
+      margin: 0 0 14px;
+      color: #fff7d2;
+      line-height: 1.45;
+      font-size: 13px;
+    }
+
+    .objective strong {
+      color: white;
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .rules {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.48;
+    }
+
+    .rules-card {
+      background: rgba(0,0,0,.14);
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .rules-card strong {
+      color: white;
+    }
+
+    .movement-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .movement-item {
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      padding: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .movement-item b {
+      color: white;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .desktop-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .desktop-controls button {
+      width: 100%;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--accent);
+      color: #17150d;
+      box-shadow: 0 8px 18px rgba(0,0,0,.22);
+      transition: transform .08s ease, opacity .08s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(1px); }
+
+    button.secondary {
+      background: rgba(255,255,255,.12);
+      color: white;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: none;
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .message {
+      min-height: 18px;
+      margin: 6px 0 10px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      opacity: .8;
+    }
+
+    .footer {
+      margin-top: 20px;
+      padding-bottom: 12px;
+
+      text-align: center;
+
+      font-size: 8px;
+      line-height: 1.4;
+
+      color: rgba(255,255,255,.20);
+    }
+
+    .log {
+      margin-top: 10px;
+      max-height: 250px;
+      overflow: auto;
+      font-size: 12px;
+      line-height: 1.35;
+      padding: 4px 4px 4px 0;
+      scrollbar-width: thin;
+    }
+
+    .log-entry {
+      padding: 7px 8px;
+      margin-bottom: 5px;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 10px;
+      background: rgba(0,0,0,.12);
+      color: var(--muted);
+    }
+
+    .fine-print {
+      color: var(--muted-2);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+
+    .mobile-hud {
+      display: none;
+      padding: 10px;
+      margin-top: 10px;
+    }
+
+    .mobile-top-actions {
+      display: none;
+    }
+
+    .icon-button {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      padding: 0;
+
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1;
+
+      min-height: unset;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 900px) {
+      .topbar {
+        position: relative;
+      }
+
+    .title-row {
+    gap: 10px;
+  }
+
+  .mode-switch button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+      .mobile-top-actions {
+        display: flex;
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        gap: 6px;
+      }
+    }
+
+    .tutorial-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(8,10,13,.78);
+      backdrop-filter: blur(10px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 5000;
+      padding: 20px;
+    }
+
+    #completionModal .tutorial-slide-title {
+  color: var(--accent);
+}
+
+    .tutorial-modal.open {
+      display: flex;
+    }
+
+    .tutorial-content {
+      width: min(520px, 100%);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,.07),
+          rgba(255,255,255,.025)
+        ),
+        rgba(20,24,28,.94);
+      position: relative;
+      border: 1px solid rgba(190,200,215,.14);
+      border-radius: 24px;
+      padding: 24px;
+
+      box-shadow:
+        0 24px 60px rgba(0,0,0,.55),
+        inset 0 1px 0 rgba(255,255,255,.06);
+    }
+
+    .tutorial-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+
+      width: 32px;
+      height: 32px;
+
+      border-radius: 999px;
+
+      padding: 0;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 16px;
+      font-weight: 700;
+
+      min-height: unset;
+    }
+
+    .tutorial-slide-title {
+      font-size: 28px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      letter-spacing: -.03em;
+    }
+
+    .tutorial-slide-body {
+      color: rgba(210,216,222,.78);
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .tutorial-controls {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .tutorial-controls button {
+      flex: 1;
+    }
+
+    .tutorial-example {
+      background: rgba(255,255,255,.05);
+
+      border: 1px solid rgba(255,255,255,.08);
+
+      border-radius: 14px;
+
+      padding: 12px 14px;
+
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      line-height: 1.7;
+
+      color: rgba(255,255,255,.92);
+    }
+
+    .tutorial-placeholder {
+    visibility: hidden;
+    pointer-events: none;
+    }
+
+    .tutorial-close {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      .layout { grid-template-columns: 1fr; }
+      .board-wrap {
+        margin: 0 auto;
+        overflow-x: auto;
+        padding-top: 14px;
+      }
+
+      .board-wrap .section-label:nth-of-type(2) {
+        display: none;
+      }
+
+      .grid {
+      border-top: 1px solid rgba(255,255,255,.06);
+      margin-top: 14px;
+      padding-top: 14px;
+    }
+
+      .hud-row:first-child div:first-child {
+        background:
+          linear-gradient(
+            145deg,
+            rgba(244,211,94,.18),
+            rgba(244,211,94,.08)
+          );
+
+        border: 1px solid rgba(244,211,94,.30);
+
+        box-shadow:
+          inset 0 1px 0 rgba(255,255,255,.06),
+          0 8px 18px rgba(0,0,0,.18);
+      }
+
+      .hud-row:first-child div:first-child strong {
+        color: var(--accent);
+        font-size: 24px;
+      }
+
+      .piece {
+        width: 44px;
+        height: 44px;
+        font-size: 42px;
+        top: 6px;
+        right: 4px;
+        opacity: .30;
+      }
+
+      .corner .rank {
+        font-size: 19px;
+      }
+
+      .corner .corner-suit {
+        font-size: 13px;
+      }
+
+      .piece-label {
+        font-size: 9px;
+        bottom: 6px;
+      }
+
+      .tagline {
+        display: none;
+      }
+
+      .mobile-hud {
+        display: block;
+        margin-top: 14px;
+        background: rgba(20,24,28,.72);
+        border: 1px solid rgba(255,255,255,.11);
+        border-radius: 18px;
+        padding: 12px;
+        box-shadow: 0 12px 28px rgba(0,0,0,.22);
+      }
+
+      .hud-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+
+      .hud-row div {
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 10px;
+        padding: 6px;
+      }
+
+      .hud-row span {
+        display: block;
+        font-size: 8px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        line-height: 1.15;
+      }
+
+      .hud-row strong {
+        display: block;
+        margin-top: 3px;
+        font-size: 17px;
+        line-height: 1;
+        color: white;
+      }
+
+      .hud-buttons {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .hud-buttons button {
+        flex: 1;
+        margin: 0;
+        min-height: 44px;
+        padding: 10px 8px;
+        font-size: 14px;
+        border-radius: 14px;
+        line-height: 1.1;
+      }
+
+      :root {
+        --cell-w: 72px;
+        --cell-h: 86px;
+        --card-w: 60px;
+        --card-h: 74px;
+        --gap: 7px;
+      }
+      .sidebar { min-height: auto; }
+      .profile-card {
+          display: none;
+        }
+      .mobile-hide-status {
+      display: none;
+        }
+      .mobile-hide-utilities {
+        display: none;
+      }
+      .sidebar {
+        display: none;
+      }
+      .suit { font-size: 28px; }
+      .rank { font-size: 20px; }
+      .movement-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 390px) {
+      :root {
+        --cell-w: 66px;
+        --cell-h: 80px;
+        --card-w: 56px;
+        --card-h: 70px;
+        --gap: 6px;
+      }
+      .piece {
+        width: 38px;
+        height: 38px;
+        font-size: 36px;
+        top: 6px;
+        right: 4px;
+      }
+
+      .corner .rank {
+        font-size: 17px;
+      }
+
+      .corner .corner-suit {
+        font-size: 12px;
+      }
+
+      .piece-label {
+        font-size: 8px;
+      }
+      .board-wrap { padding: 12px; }
+      .grid { padding: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+
+  <div class="title-row">
+    <h1 class="logo">
+      <span class="sol">Sol</span>Entropy
+    </h1>
+
+    <div class="mode-switch">
+      <button id="dailyModeBtn" onclick="switchGameMode('daily')">
+        <span class="desktop-label">Daily</span>
+        <span class="mobile-label">📅</span>
+      </button>
+
+      <button
+        id="randomModeBtn"
+        class="random-mode-btn"
+        onclick="switchGameMode('random')"
+      >
+        <span class="desktop-label">Random</span>
+        <span class="mobile-label">🎲</span>
+      </button>
+    </div>
+
+  </div>
+
+    <div class="mobile-top-actions">
+
+  <button
+    class="icon-button"
+    onclick="openTutorial()"
+    aria-label="Info"
+  >
+    ?
+  </button>
+
+  <button
+    class="icon-button"
+    onclick="openSettingsModal()"
+    aria-label="Settings"
+  >
+    ⛭
+  </button>
+
+  <button
+    class="icon-button"
+    onclick="openProfileModal()"
+    aria-label="Profile"
+  >
+    👤
+  </button>
+
+  <button
+  class="icon-button"
+  onclick="openLeaderboardModal()"
+  aria-label="Leaderboard"
+>
+  🥇
+</button>
+
+</div>
+    <p class="tagline">
+      A solo abstract strategy game. Move cards through the 4x4 grid using chess piece-like movements to sort cards into the four foundation stacks. Minimize Entropy by building as close to perfectly-ascending stacks as you can.
+    </p>
+    <div class="mobile-hud">
+      <div class="hud-row">
+        <div>
+          <span>Entropy</span>
+          <strong id="mobileScore">0</strong>
+        </div>
+
+        <div>
+          <span>Foundation</span>
+          <strong id="mobileCards">0 / 52</strong>
+        </div>
+
+        <div>
+          <span>Moves</span>
+          <strong id="mobileMoves">0</strong>
+        </div>
+      </div>
+
+      <div class="hud-row">
+        <div>
+          <span>Streak</span>
+          <strong id="mobileStreak">0</strong>
+        </div>
+
+        <div>
+          <span>Longest</span>
+          <strong id="mobileBestStreak">0</strong>
+        </div>
+
+        <div>
+          <span>Draw</span>
+          <strong id="mobileDrawPile">0</strong>
+        </div>
+      </div>
+
+      <div class="hud-buttons">
+        <button class="new-game-btn" onclick="confirmNewGame()">New Game</button>
+        <button class="secondary undo-btn" onclick="undo()">Undo</button>
+        <button class="secondary copy-results-btn" id="mobileCopyResultsBtn" onclick="copyResults()">
+      Copy State
+    </button>
+      </div>
+    </div>
+</div>
+
+<div class="layout">
+    <div class="board-wrap">
+      <div class="section-label">Foundations</div>
+      <div id="foundations" class="foundations"></div>
+      <!--<div class="section-label">Grid</div>-->
+      <div id="grid" class="grid"></div>
+    </div>
+
+    <aside class="sidebar">
+      <div class="desktop-controls mobile-hide-status">
+        <button class="new-game-btn" onclick="confirmNewGame()">New Game</button>
+        <button class="secondary undo-btn" onclick="undo()">Undo</button>
+        <button class="secondary" onclick="openTutorial()">How to Play</button>
+        <button class="secondary" onclick="openProfileModal()">Profile</button>
+        <button class="secondary" onclick="openSettingsModal()">Settings</button>
+        <button class="secondary copy-results-btn" id="copyResultsBtn" onclick="copyResults()">
+  Copy State
+</button>
+      </div>
+      <div class="score-card mobile-hide-status">
+      <div class="stat"><strong>Entropy</strong><span id="score">0</span></div>
+      <div class="stat"><strong>Foundation</strong><span id="foundationCards">0 / 52</span></div>
+      <div class="stat"><strong>Moves</strong><span id="moves">0</span></div>
+      <div class="stat"><strong id="currentStreakLabel">Streak</strong><span id="currentStreak">0</span></div>
+      <div class="stat"><strong id="bestStreakLabel">Longest</strong><span id="runBestStreak">0</span></div>
+      <div class="stat"><strong>Draw</strong><span id="drawCount">0</span></div>
+    </div>
+
+      <!--<div class="analytics-card profile-card">
+        <h3>Daily Shuffle Stats</h3>
+        <div class="mini-stat"><span>Best Entropy</span><strong id="profileBestScore">—</strong></div>
+        <div class="mini-stat"><span>Average Entropy</span><strong id="profileAverageEntropy">—</strong></div>
+        <div class="mini-stat"><span>Days Completed</span><strong id="profileCompletedRuns">0</strong></div>
+        <div class="mini-stat"><span>Longest Streak</span><strong id="profileLongestStreak">0</strong></div>
+      </div>-->
+
+
+      <div class="buttons mobile-hide-utilities">
+
+        <button class="secondary" onclick="resetStats()">Reset Stats</button>
+        <button class="secondary" onclick="copyGameLog()">Copy Game Log</button>
+
+      </div>
+
+    <div id="message" class="message"></div>
+
+      <div class="rules">
+        <strong>Full move log</strong></div>
+      <div id="log" class="log"></div>
+    </aside>
+  </div>
+
+  <div id="tutorialModal" class="tutorial-modal">
+    <div class="tutorial-content">
+      <button class="tutorial-x" onclick="closeTutorial()">
+        ✕
+      </button>
+      <div id="tutorialSlide"></div>
+
+      <div id="tutorialControls" class="tutorial-controls"></div>
+
+    </div>
+  </div>
+
+  <div id="settingsModal" class="tutorial-modal">
+  <div class="tutorial-content">
+    <button class="tutorial-x" onclick="closeSettingsModal()">✕</button>
+
+    <div class="tutorial-slide-title">Settings</div>
+
+    <div class="tutorial-slide-body">
+      <div class="settings-row">
+        <div>
+          <div class="settings-label-row">
+            <div class="settings-label">Undo Mode</div>
+            <button class="mini-info-button" onclick="toggleUndoInfo()">i</button>
+          </div>
+
+          <div class="settings-subtext" id="undoModeLabel">Challenge</div>
+        </div>
+
+        <button id="undoToggle" class="toggle-switch" onclick="toggleUndoMode()">
+          <div class="toggle-knob"></div>
+        </button>
+      </div>
+      <div id="undoInfoBubble" class="settings-info-bubble">
+
+  <button
+    class="settings-info-close"
+    onclick="toggleUndoInfo()"
+    aria-label="Close"
+  >
+    ✕
+  </button>
+
+  Challenge Mode only allows undoing the immediately previous move and disables undo after a back-row draw is revealed.<br><br>
+
+  Unlimited Mode allows stepping backward through previous moves.<br><br>
+
+  This setting applies only to Random Shuffle 🎲. Daily Shuffles 📅 are always Challenge Mode.
+
+</div>
+      <div class="settings-action-row">
+        <div>
+          <div class="settings-label">Export Run Data</div>
+          <div class="settings-subtext">Copy detailed game log</div>
+        </div>
+
+        <button class="secondary settings-action-button" onclick="copyGameLog()">
+          Copy
+        </button>
+      </div>
+      <div class="settings-action-row">
+        <div>
+          <div class="settings-label">About Entropy</div>
+          <div class="settings-subtext">Credits, contact, privacy, version</div>
+        </div>
+
+        <button class="secondary settings-action-button" onclick="openAboutModal()">
+          About
+        </button>
+      </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+  <div id="profileModal" class="tutorial-modal">
+  <div class="tutorial-content">
+
+    <button class="tutorial-x" onclick="closeProfileModal()">✕</button>
+
+    <div class="tutorial-slide-title">Daily Shuffle Stats</div>
+
+    <div class="tutorial-slide-body">
+      <div class="mini-stat">
+        <span>Best Entropy</span>
+        <strong id="modalBestScore">—</strong>
+      </div>
+
+      <div class="mini-stat">
+        <span>Average Entropy</span>
+        <strong id="modalAverageEntropy">—</strong>
+      </div>
+
+      <div class="mini-stat">
+        <span>Days Completed</span>
+        <strong id="modalCompletedRuns">0</strong>
+      </div>
+
+      <div class="mini-stat">
+        <span>Longest Streak</span>
+        <strong id="modalLongestStreak">0</strong>
+      </div>
+
+      <div class="profile-section-title">
+          Daily Shuffle Results
+        </div>
+
+        <div id="dailyEntropyChart" class="daily-chart"></div>
+
+      <div class="profile-actions">
+        <button class="secondary" onclick="copyProfileStats()">
+          Copy Profile Stats
+        </button>
+
+        <button class="secondary danger-button" onclick="resetStats(); closeProfileModal();">
+          Reset Stats
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="aboutModal" class="tutorial-modal">
+  <div class="tutorial-content">
+
+    <button class="tutorial-x" onclick="closeAboutModal()">✕</button>
+
+    <div class="tutorial-slide-title">About</div>
+
+    <div class="tutorial-slide-body">
+      <strong>SolEntropy</strong><br>
+      A solo abstract strategy card game by Brandon Blagg.<br><br>
+
+      <strong>Contact</strong><br>
+      Contact: brandon@beblagg.com<br><br>
+
+      <strong>Privacy</strong><br>
+      SolEntropy stores game progress and profile stats locally in your browser. Analytics may be used to understand site traffic and improve the game.<br><br>
+
+      <strong>Version</strong><br>
+      v2026.06
+    </div>
+
+  </div>
+</div>
+
+  <div id="completionModal" class="tutorial-modal">
+  <div class="tutorial-content">
+
+    <div class="tutorial-slide-title">
+      Run Complete
+    </div>
+
+    <div class="tutorial-slide-body" id="completionStats">
+    </div>
+
+    <div class="tutorial-controls">
+      <button class="secondary" onclick="closeCompletionModal()">
+        Close
+      </button>
+
+      <button onclick="copyResults()">
+        Copy Results
+      </button>
+    </div>
+
+    <button
+      class="tutorial-close new-game-btn"
+      onclick="confirmNewGame()"
+    >
+      New Game
+    </button>
+
+  </div>
+</div>
+
+  <script>
+    const SUITS = ["♠", "♣", "♦", "♥"];
+    const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+    const rankValue = rank => RANKS.indexOf(rank) + 1;
+
+    let deck = [];
+    let drawPile = [];
+    let grid = [];
+    let foundations = [[], [], [], []];
+    let selected = null;
+    let score = 0;
+    let moves = 0;
+    let undoSnapshot = null;
+    let undoAvailable = false;
+    let undoMode = localStorage.getItem("entropy.undoMode") || "challenge";
+    let usedUnlimitedUndoThisRun = false;
+    let history = [];
+    let logEntries = [];
+    let originalLayout = [];
+    let originalShuffle = [];
+    let gameMode = localStorage.getItem("entropy.gameMode") || "daily";
+    let activeDailySeed = currentDailySeed();
+    let entropyProfile = {};
+    let dragging = null;
+    let dragGhost = null;
+    let dragHover = null;
+    let suppressClickAfterDrag = false;
+    let currentPerfectStreak = 0;
+    let runBestPerfectStreak = 0;
+    let runCompleted = false;
+    let dailyCarryStillAlive = true;
+    let profileStats = loadProfileStats();
+    let randomStats = loadRandomStats();
+    let randomCarryStillAlive = true;
+
+    function loadProfileStats() {
+      const fallback = {
+        completedRuns: 0,
+        bestScore: null,
+        totalEntropy: 0,
+        longestStreak: 0,
+        dailyEntropyScores: [],
+
+        currentDailyPerfectStreak: 0,
+        bestDailyPerfectStreak: 0,
+        lastDailyStartedSeed: null,
+        lastDailyCompletedSeed: null
+      };
+
+      try {
+        const saved = localStorage.getItem("entropy.v2026.05.profile");
+        const parsed = saved ? JSON.parse(saved) : {};
+        const stats = { ...fallback, ...parsed };
+
+        if (
+          stats.bestDailyPerfectStreak === 0 &&
+          stats.longestStreak > 0
+        ) {
+          stats.bestDailyPerfectStreak = stats.longestStreak;
+        }
+
+        return stats;
+        return saved ? { ...fallback, ...JSON.parse(saved) } : fallback;
+      } catch (err) {
+        return fallback;
+      }
+    }
+
+    function saveProfileStats() {
+      localStorage.setItem("entropy.v2026.05.profile", JSON.stringify(profileStats));
+    }
+
+
+    function loadRandomStats() {
+      const fallback = {
+        currentPerfectStreak: 0,
+        bestPerfectStreak: 0,
+        runStarted: false
+      };
+
+      try {
+        const saved = localStorage.getItem("entropy.v2026.06.randomStats");
+        return saved ? { ...fallback, ...JSON.parse(saved) } : fallback;
+      } catch (err) {
+        return fallback;
+      }
+    }
+
+    function saveRandomStats() {
+      localStorage.setItem(
+        "entropy.v2026.06.randomStats",
+        JSON.stringify(randomStats)
+      );
+    }
+
+    function dailyEntropyHistogramText() {
+      const buckets = dailyEntropyBuckets();
+      const max = Math.max(...buckets, 1);
+
+      return buckets
+        .map((count, i) => {
+          const label = i === 10
+            ? " >"
+            : String(i).padStart(2, " ");
+
+          const barLength =
+            count === 0
+              ? 0
+              : Math.max(1, Math.round((count / max) * 10));
+
+          const bar = count === 0
+            ? "·"
+            : "█".repeat(barLength);
+
+          return `${label}: ${bar} ${count}`;
+        })
+        .join("\n");
+    }
+
+    function resetStats() {
+      if (!confirm("Reset all local Entropy statistics?")) return;
+
+      localStorage.removeItem("entropy.v2026.05.profile");
+
+      profileStats = loadProfileStats();
+      render();
+
+      setMessage("Local statistics reset.");
+    }
+
+function confirmNewGame() {
+    if (gameMode === "daily") {
+    setMessage("Daily Shuffle can only be played once per day.");
+    return;
+  }
+  const hasProgress =
+    moves > 0 ||
+    completedFoundationCardCount() > 0;
+
+  // Skip confirmation for untouched fresh boards
+  if (!hasProgress) {
+    newGame();
+    return;
+  }
+
+  const confirmed = confirm(
+    "Start a new game? Your current run will be lost."
+  );
+
+  if (confirmed) {
+        if (
+      gameMode === "random" &&
+      randomStats.runStarted &&
+      completedFoundationCardCount() < 52
+    ) {
+      randomStats.bestPerfectStreak = Math.max(
+        randomStats.bestPerfectStreak || 0,
+        displayBestStreak()
+      );
+
+      randomStats.currentPerfectStreak = 0;
+      randomStats.runStarted = false;
+      saveRandomStats();
+    }
+    newGame();
+  }
+}
+
+
+    function completedFoundationCardCount() {
+      return foundations.reduce((sum, stack) => sum + stack.length, 0);
+    }
+
+    function averageEntropy() {
+      if (!profileStats.completedRuns) return null;
+      return profileStats.totalEntropy / profileStats.completedRuns;
+    }
+
+    function checkRunCompletion() {
+      if (runCompleted) return;
+
+      if (completedFoundationCardCount() !== 52) return;
+
+      runCompleted = true;
+
+      if (gameMode === "daily") {
+        profileStats.completedRuns += 1;
+        profileStats.totalEntropy += score;
+
+        profileStats.bestScore =
+          profileStats.bestScore === null
+            ? score
+            : Math.min(profileStats.bestScore, score);
+
+        profileStats.dailyEntropyScores.push(score);
+
+        profileStats.longestStreak = Math.max(
+          profileStats.longestStreak,
+          runBestPerfectStreak
+        );
+
+        profileStats.currentDailyPerfectStreak = displayCurrentStreak();
+
+        profileStats.bestDailyPerfectStreak = Math.max(
+          profileStats.bestDailyPerfectStreak || 0,
+          displayBestStreak()
+        );
+
+        profileStats.lastDailyCompletedSeed = currentDailySeed();
+
+        saveProfileStats();
+
+        setMessage(`Daily Shuffle complete. Final entropy: ${score}. Profile stats updated.`);
+      } else {
+        randomStats.currentPerfectStreak = displayCurrentStreak();
+
+        randomStats.bestPerfectStreak = Math.max(
+          randomStats.bestPerfectStreak || 0,
+          displayBestStreak()
+        );
+
+        randomStats.runStarted = false;
+        saveRandomStats();
+
+        setMessage(`Random Shuffle complete. Final entropy: ${score}.`);
+      }
+
+      render();
+      openCompletionModal();
+    }
+
+    function makeDeck() {
+      const cards = [];
+      for (const suit of SUITS) {
+        for (const rank of RANKS) {
+          cards.push({
+            id: `${rank}${suit}-${Math.random().toString(36).slice(2)}`,
+            rank,
+            suit,
+            value: rankValue(rank)
+          });
+        }
+      }
+      return cards;
+    }
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function newGame() {
+      if (gameMode === "daily") {
+        deck = seededShuffle(
+          makeDeck(),
+          currentDailySeed()
+        );
+      } else {
+        deck = shuffle(makeDeck());
+      }
+      originalShuffle = [...deck].reverse().map(cardText);
+      grid = Array.from({ length: 4 }, () => Array(4).fill(null));
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          // Start with one empty slot at C3 to create central mobility while keeping the back row full.
+          if (r === 1 && c === 2) {
+            grid[r][c] = null;
+          } else {
+            grid[r][c] = deck.pop();
+          }
+        }
+      }
+      drawPile = deck;
+      foundations = [[], [], [], []];
+      selected = null;
+      score = 0;
+      moves = 0;
+      history = [];
+      entropyProfile = {};
+      undoSnapshot = null;
+      undoAvailable = false;
+      usedUnlimitedUndoThisRun = effectiveUndoMode() === "unlimited";
+      logEntries = [];
+      currentPerfectStreak = 0;
+      runBestPerfectStreak = 0;
+      runCompleted = false;
+      dailyCarryStillAlive = true;
+      randomCarryStillAlive = true;
+      saveOriginalLayout();
+      log("Original deal saved.");
+      setMessage("New game dealt. Select a card to see legal grid moves, or place it into a foundation.");
+      render();
+    }
+
+    function activeRunKey(mode = gameMode) {
+      if (mode === "daily") {
+        return `entropy.run.daily.${currentDailySeed()}`;
+      }
+
+      return "entropy.run.random";
+    }
+
+    function saveActiveRun() {
+      localStorage.setItem(activeRunKey(), snapshot());
+    }
+
+    function hasSavedRun(mode = gameMode) {
+      return !!localStorage.getItem(activeRunKey(mode));
+    }
+
+    function loadActiveRun(mode = gameMode) {
+      const saved = localStorage.getItem(activeRunKey(mode));
+      if (!saved) return false;
+
+      restore(saved);
+      return true;
+    }
+
+  function localDateSeed() {
+  const now = new Date();
+
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function hashSeed(str) {
+  let h = 2166136261;
+
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+
+  return h >>> 0;
+}
+
+function seededRandom(seed) {
+  let t = seed >>> 0;
+
+  return function () {
+    t += 0x6D2B79F5;
+
+    let x = t;
+    x = Math.imul(x ^ (x >>> 15), x | 1);
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
+
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seededShuffle(arr, seedText) {
+  const a = [...arr];
+  const random = seededRandom(hashSeed(seedText));
+
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+
+  return a;
+}
+
+function currentDailySeed() {
+  return localDateSeed();
+}
+
+function switchGameMode(mode) {
+  if (mode === gameMode) return;
+
+  saveActiveRun();
+
+  gameMode = mode;
+  localStorage.setItem("entropy.gameMode", gameMode);
+
+  if (!loadActiveRun(gameMode)) {
+    newGame();
+  }
+
+  render();
+}
+
+    function snapshot() {
+      return JSON.stringify({ drawPile, grid, foundations, selected, score, moves, logEntries, originalLayout, originalShuffle, currentPerfectStreak, runBestPerfectStreak, runCompleted, usedUnlimitedUndoThisRun, entropyProfile, dailyCarryStillAlive,randomCarryStillAlive });
+    }
+
+    function restore(state) {
+      const s = JSON.parse(state);
+      drawPile = s.drawPile;
+      grid = s.grid;
+      foundations = s.foundations;
+      selected = s.selected;
+      score = s.score;
+      moves = s.moves;
+      logEntries = s.logEntries;
+      originalLayout = s.originalLayout || [];
+      originalShuffle = s.originalShuffle || [];
+      currentPerfectStreak = s.currentPerfectStreak || 0;
+      runBestPerfectStreak = s.runBestPerfectStreak || 0;
+      runCompleted = s.runCompleted || false;
+      usedUnlimitedUndoThisRun = s.usedUnlimitedUndoThisRun ?? false;
+      dailyCarryStillAlive = s.dailyCarryStillAlive ?? true;
+      randomCarryStillAlive = s.randomCarryStillAlive ?? true;
+      entropyProfile = s.entropyProfile || {};
+      render();
+    }
+
+    function saveUndoSnapshot() {
+      const state = snapshot();
+
+      history.push(state);
+
+      undoSnapshot = state;
+      undoAvailable = true;
+    }
+
+    function updateSettingsDisplay() {
+      const label = document.getElementById("undoModeLabel");
+      const toggle = document.getElementById("undoToggle");
+
+      if (!label || !toggle) return;
+
+      const isDaily = gameMode === "daily";
+      const challenge = isDaily || undoMode === "challenge";
+
+      label.textContent = challenge ? "Challenge" : "Unlimited";
+      toggle.disabled = isDaily;
+      toggle.classList.toggle("active", challenge);
+    }
+
+      function openSettingsModal() {
+        updateSettingsDisplay();
+        document.getElementById("settingsModal").classList.add("open");
+      }
+
+      function openLeaderboardModal() {
+        setMessage("Leaderboards coming soon.");
+      }
+
+      function openAboutModal() {
+        closeSettingsModal();
+        document.getElementById("aboutModal").classList.add("open");
+      }
+
+      function closeAboutModal() {
+        document.getElementById("aboutModal").classList.remove("open");
+      }
+
+      function toggleUndoInfo() {
+        document
+          .getElementById("undoInfoBubble")
+          .classList.toggle("open");
+      }
+
+      function closeSettingsModal() {
+        document.getElementById("settingsModal").classList.remove("open");
+      }
+
+      function toggleUndoMode() {
+        if (gameMode === "daily") {
+          setMessage("Daily Shuffle always uses Challenge undo.");
+          return;
+        }
+        undoMode =
+          undoMode === "challenge" ? "unlimited" : "challenge";
+
+        localStorage.setItem("entropy.undoMode", undoMode);
+
+        if (effectiveUndoMode() === "unlimited") {
+          usedUnlimitedUndoThisRun = true;
+        }
+
+        undoAvailable =
+          effectiveUndoMode() === "unlimited"
+            ? history.length > 0
+            : !!undoSnapshot;
+
+        if (effectiveUndoMode() === "unlimited") {
+          usedUnlimitedUndoThisRun = true;
+        }
+
+        updateSettingsDisplay();
+        render();
+      }
+
+      function clearUndo() {
+        undoSnapshot = null;
+        undoAvailable = false;
+      }
+
+    function undo() {
+      if (runCompleted) return;
+
+      if (effectiveUndoMode() === "unlimited") {
+        if (!history.length) {
+          setMessage("Nothing to undo.");
+          return;
+        }
+
+        restore(history.pop());
+        undoAvailable = history.length > 0;
+        setMessage("Undid last move.");
+        render();
+        return;
+      }
+
+      if (!undoSnapshot) {
+        setMessage("Undo is not available after a back-row draw is revealed.");
+        return;
+      }
+
+      restore(undoSnapshot);
+      clearUndo();
+      setMessage("Undid last move.");
+      render();
+    }
+
+    function cardText(card) {
+      return `${card.rank}${card.suit}`;
+    }
+
+    function coordText(r, c) {
+      const cols = ["A", "B", "C", "D"];
+
+      // Foundations shown as A*, B*, C*, D*
+      if (r === -1) return `${cols[c]}*`;
+
+      // Chess-style orientation:
+      // bottom row = rank 1
+      // top row = rank 4
+      const chessRank = 4 - r;
+
+      return `${cols[c]}${chessRank}`;
+    }
+
+    function cardNotation(card) {
+      return `${card.rank}${card.suit}`;
+    }
+
+    function saveOriginalLayout() {
+      originalLayout = grid.map(row => row.map(card => card ? cardText(card) : "__"));
+    }
+
+    function originalLayoutText() {
+      return originalLayout
+        .map((row, i) => {
+          const chessRow = 4 - i;
+
+          return `Row ${chessRow}: ${row.join(" ")}`;
+        })
+        .join("\n");
+    }
+
+    function isRed(card) {
+      return card.suit === "♦" || card.suit === "♥";
+    }
+
+    function setMessage(text) {
+      document.getElementById("message").textContent = text;
+    }
+
+    function showEntropyPop(foundationIndex, entropy) {
+  const slot = document.querySelector(
+    `.slot[data-foundation="${foundationIndex}"]`
+  );
+
+  if (!slot) return;
+
+  const rect = slot.getBoundingClientRect();
+  const pop = document.createElement("div");
+
+  pop.className = `entropy-pop ${entropy === 0 ? "perfect" : ""}`;
+  pop.textContent = entropy === 0 ? "+0" : `+${entropy}`;
+
+  pop.style.left = `${rect.left + rect.width / 2}px`;
+  pop.style.top = `${rect.top + rect.height / 2}px`;
+
+  document.body.appendChild(pop);
+
+  pop.addEventListener("animationend", () => {
+    pop.remove();
+  });
+}
+
+    function selectCard(r, c) {
+      const card = grid[r][c];
+      if (!card) return;
+      selected = { r, c };
+      setMessage(`${cardText(card)} selected.`);
+      render();
+    }
+
+    function clickCell(r, c) {
+      const clickedCard = grid[r][c];
+
+      // If nothing is selected, select a card if present.
+      if (!selected) {
+        if (clickedCard) selectCard(r, c);
+        return;
+      }
+
+      // Clicking the selected card clears selection.
+      if (selected.r === r && selected.c === c) {
+        selected = null;
+        setMessage("Selection cleared.");
+        render();
+        return;
+      }
+
+      const fromCard = grid[selected.r][selected.c];
+      if (!fromCard) {
+        selected = null;
+        render();
+        return;
+      }
+
+      // Clicking another occupied card switches selection.
+      if (clickedCard) {
+        selectCard(r, c);
+        return;
+      }
+
+      // Empty cell: attempt a move immediately.
+      if (!isLegalMove(fromCard, selected.r, selected.c, r, c)) {
+        setMessage(`${cardText(fromCard)} cannot move to ${coordText(r, c)}.`);
+        return;
+      }
+
+      saveUndoSnapshot();
+
+      const fromNotation = coordText(selected.r, selected.c);
+      const toNotation = coordText(r, c);
+
+      grid[r][c] = fromCard;
+      grid[selected.r][selected.c] = null;
+      maybeRefill(selected.r, selected.c);
+
+      moves++;
+      log(`${moves}. ${cardNotation(fromCard)}: ${fromNotation} -> ${toNotation}`);
+      selected = null;
+      setMessage(`${cardText(fromCard)} moved from ${fromNotation} to ${toNotation}.`);
+      render();
+    }
+
+    function foundationDestinationForIndex(i) {
+      // Treat foundation slots as virtual spaces one row above the grid.
+      // Foundation 1 is above column 0, foundation 4 is above column 3.
+      return { r: -1, c: i };
+    }
+
+    function canMoveToFoundation(card, fromR, fromC, foundationIndex) {
+      const dest = foundationDestinationForIndex(foundationIndex);
+      return isLegalVirtualMove(card, fromR, fromC, dest.r, dest.c);
+    }
+
+    function clickFoundation(i) {
+      if (!selected) {
+        setMessage("Select a grid card first, then choose a foundation.");
+        return;
+      }
+
+      const card = grid[selected.r][selected.c];
+      if (!card) return;
+
+      if (!canMoveToFoundation(card, selected.r, selected.c, i)) {
+        setMessage(`${cardText(card)} cannot move to foundation ${coordText(-1, i)} from ${coordText(selected.r, selected.c)}.`);
+        return;
+      }
+
+      saveUndoSnapshot();
+
+      const fromNotation = coordText(selected.r, selected.c);
+      const toNotation = coordText(-1, i);
+      const entropy = scoreFoundationMove(card, foundations[i]);
+      entropyProfile[entropy] = (entropyProfile[entropy] || 0) + 1;
+      foundations[i].push(card);
+      grid[selected.r][selected.c] = null;
+      maybeRefill(selected.r, selected.c);
+
+      score += entropy;
+      moves++;
+
+      if (entropy === 0) {
+        currentPerfectStreak++;
+        runBestPerfectStreak = Math.max(
+          runBestPerfectStreak,
+          currentPerfectStreak
+        );
+
+        if (gameMode === "daily") {
+          profileStats.bestDailyPerfectStreak = Math.max(
+            profileStats.bestDailyPerfectStreak || 0,
+            displayBestStreak()
+          );
+
+          saveProfileStats();
+        }
+        if (gameMode === "random") {
+          randomStats.bestPerfectStreak = Math.max(
+            randomStats.bestPerfectStreak || 0,
+            displayBestStreak()
+          );
+
+          saveRandomStats();
+        }
+
+      } else {
+        if (gameMode === "daily") {
+          dailyCarryStillAlive = false;
+        }
+
+        if (gameMode === "random") {
+          randomCarryStillAlive = false;
+        }
+
+        currentPerfectStreak = 0;
+      }
+
+      if (
+        gameMode === "daily" &&
+        profileStats.lastDailyStartedSeed !== currentDailySeed()
+      ) {
+        profileStats.lastDailyStartedSeed = currentDailySeed();
+        saveProfileStats();
+      }
+
+      if (gameMode === "random" && !randomStats.runStarted) {
+        randomStats.runStarted = true;
+        saveRandomStats();
+      }
+
+      log(`${moves}. ${cardNotation(card)}: ${fromNotation} -> ${toNotation} (+${entropy} entropy)`);
+      selected = null;
+      setMessage(`${cardText(card)} moved from ${fromNotation} to ${toNotation}. Added ${entropy} entropy.`);
+      render();
+      showEntropyPop(i, entropy);
+      playEntropySound(entropy);
+      checkRunCompletion();
+    }
+
+    function maybeRefill(r, c) {
+      // Back row is row 3, farthest from the foundations.
+      // Revealing a new card clears undo so players cannot scout the draw pile.
+      if (r === 3 && drawPile.length > 0) {
+        grid[r][c] = drawPile.pop();
+        log(`Draw: ${cardNotation(grid[r][c])} -> ${coordText(r, c)}`);
+        clearUndo();
+        return true;
+      }
+
+      return false;
+    }
+
+    function expectedNextValue(stack) {
+      if (stack.length === 0) return 1;
+      const top = stack[stack.length - 1];
+      return top.value === 13 ? 1 : top.value + 1;
+    }
+
+    function forwardGapPenalty(card, stack) {
+      // Empty foundations can start with any card for no penalty.
+      if (stack.length === 0) return 0;
+
+      // Expected next rank cycles K -> A.
+      const expected = expectedNextValue(stack);
+
+      // Penalty is the forward distance from expected to played card.
+      // Exact expected card = 0.
+      // One card late = 1. Example: expected 7, played 8 => +1 entropy.
+      // Worst case: expected A, played K => +12 entropy.
+      //
+      // If expected is A and played K, this returns 12.
+      // If top is K, expected is A, and played K again, this also returns 12.
+      return (card.value - expected + 13) % 13;
+    }
+
+    function scoreFoundationMove(card, stack) {
+      return forwardGapPenalty(card, stack);
+    }
+
+    function playEntropySound(entropy) {
+      if (entropy > 0) return;
+  const AudioContext =
+    window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContext) return;
+
+  const ctx = new AudioContext();
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  if (entropy === 0) {
+    // clean satisfying tone
+    osc.type = "sine";
+    osc.frequency.value = 880;
+  } else {
+    // rougher entropy tone
+    osc.type = "sine";
+    osc.frequency.value = 420 - Math.min(entropy * 18, 180);
+  }
+
+  const peak =
+  entropy === 0
+    ? 0.04
+    : Math.max(0.03, 0.045 - entropy * 0.0015);
+
+gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+
+gain.gain.exponentialRampToValueAtTime(
+  peak,
+  ctx.currentTime + 0.008
+);
+
+gain.gain.exponentialRampToValueAtTime(
+  0.0001,
+  ctx.currentTime + 0.14
+);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.2);
+}
+
+    function isLegalVirtualMove(card, r1, c1, r2, c2) {
+      // Allows destinations just outside the grid, currently the foundation row at r = -1.
+      // Used only for foundation placement.
+      const dr = r2 - r1;
+      const dc = c2 - c1;
+
+      if (card.rank === "Q") return isQueenVirtualMove(r1, c1, r2, c2);
+      if (card.rank === "K") return Math.max(Math.abs(dr), Math.abs(dc)) === 1;
+
+      switch (card.suit) {
+        case "♠":
+          // Into foundations: forward or diagonal one step only
+          if (r2 === -1) {
+            return dr === -1 && Math.abs(dc) <= 1;
+          }
+
+          if (dc !== 0) return false;
+
+          if (dr === -1) return true;
+
+          if (r1 === 3 && dr === -2) {
+            return !grid[r1 - 1][c1];
+          }
+
+          return false;
+        case "♣":
+          return Math.abs(dr) === Math.abs(dc) && virtualPathClear(r1, c1, r2, c2);
+        case "♦":
+          return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
+        case "♥":
+          return (dr === 0 || dc === 0) && virtualPathClear(r1, c1, r2, c2);
+        default:
+          return false;
+      }
+    }
+
+    function isLegalMove(card, r1, c1, r2, c2) {
+      const dr = r2 - r1;
+      const dc = c2 - c1;
+
+      if (r1 === r2 && c1 === c2) return false;
+      if (r2 < 0 || r2 > 3 || c2 < 0 || c2 > 3) return false;
+      if (grid[r2][c2]) return false;
+
+      if (card.rank === "Q") return isQueenMove(r1, c1, r2, c2);
+      if (card.rank === "K") return Math.max(Math.abs(dr), Math.abs(dc)) === 1;
+
+      switch (card.suit) {
+        case "♠":
+          if (dc !== 0) return false;
+
+          // Normal pawn move
+          if (dr === -1) return true;
+
+          // First move from back row: two spaces forward if not blocked
+          if (r1 === 3 && dr === -2) {
+            return !grid[r1 - 1][c1];
+          }
+
+          return false;
+        case "♣":
+          return Math.abs(dr) === Math.abs(dc) && pathClear(r1, c1, r2, c2);
+        case "♦":
+          return (Math.abs(dr) === 2 && Math.abs(dc) === 1) || (Math.abs(dr) === 1 && Math.abs(dc) === 2);
+        case "♥":
+          return (dr === 0 || dc === 0) && pathClear(r1, c1, r2, c2);
+        default:
+          return false;
+      }
+    }
+
+    function isQueenMove(r1, c1, r2, c2) {
+      const dr = r2 - r1;
+      const dc = c2 - c1;
+      const diagonal = Math.abs(dr) === Math.abs(dc);
+      const straight = dr === 0 || dc === 0;
+      return (diagonal || straight) && pathClear(r1, c1, r2, c2);
+    }
+
+    function isQueenVirtualMove(r1, c1, r2, c2) {
+      const dr = r2 - r1;
+      const dc = c2 - c1;
+      const diagonal = Math.abs(dr) === Math.abs(dc);
+      const straight = dr === 0 || dc === 0;
+      return (diagonal || straight) && virtualPathClear(r1, c1, r2, c2);
+    }
+
+    function virtualPathClear(r1, c1, r2, c2) {
+      const dr = Math.sign(r2 - r1);
+      const dc = Math.sign(c2 - c1);
+      let r = r1 + dr;
+      let c = c1 + dc;
+
+      while (r !== r2 || c !== c2) {
+        // Only check squares inside the 4x4 grid. The destination may be outside.
+        if (r >= 0 && r <= 3 && c >= 0 && c <= 3 && grid[r][c]) return false;
+        r += dr;
+        c += dc;
+      }
+      return true;
+    }
+
+    function pathClear(r1, c1, r2, c2) {
+      const dr = Math.sign(r2 - r1);
+      const dc = Math.sign(c2 - c1);
+      let r = r1 + dr;
+      let c = c1 + dc;
+
+      while (r !== r2 || c !== c2) {
+        if (grid[r][c]) return false;
+        r += dr;
+        c += dc;
+      }
+      return true;
+    }
+
+    function legalTargetsForSelected() {
+      const targets = new Set();
+      if (!selected) return targets;
+      const card = grid[selected.r][selected.c];
+      if (!card) return targets;
+
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          if (isLegalMove(card, selected.r, selected.c, r, c)) {
+            targets.add(`${r},${c}`);
+          }
+        }
+      }
+      return targets;
+    }
+
+    function chessIcon(card) {
+      if (card.rank === "Q") return "♛";
+      if (card.rank === "K") return "♚";
+
+      switch (card.suit) {
+        case "♠":
+          return "♟";
+        case "♣":
+          return "♝";
+        case "♦":
+          return "♞";
+        case "♥":
+          return "♜";
+        default:
+          return "";
+      }
+    }
+
+    function renderCard(card, selectedClass = false) {
+      if (!card) return "";
+      const colorClass = isRed(card) ? "red" : "black";
+      const piece = chessIcon(card);
+      const moveLabel = movementLabel(card);
+
+      return `
+        <div class="card ${colorClass} ${selectedClass ? "selected" : ""}">
+          <div class="corner">
+            <div class="rank">${card.rank}</div>
+            <div class="corner-suit">${card.suit}</div>
+          </div>
+
+          <div class="piece">${piece}</div>
+          <div class="piece-label">${moveLabel}</div>
+        </div>
+      `;
+    }
+
+    function movementLabel(card) {
+      if (card.rank === "Q") return "queen";
+      if (card.rank === "K") return "king";
+      if (card.suit === "♠") return "pawn";
+      if (card.suit === "♣") return "bishop";
+      if (card.suit === "♦") return "knight";
+      if (card.suit === "♥") return "rook";
+      return "";
+    }
+
+    function startDrag(event) {
+      // Prevent mobile page scrolling only when the gesture begins on a card.
+      event.preventDefault();
+      event.stopPropagation();
+
+      const cardEl = event.currentTarget;
+      const r = Number(cardEl.dataset.row);
+      const c = Number(cardEl.dataset.col);
+      const card = grid[r][c];
+
+      if (!card) return;
+
+      const wasSelected = selected && selected.r === r && selected.c === c;
+
+      selected = { r, c };
+      dragging = {
+        r,
+        c,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        wasSelected
+      };
+
+      cardEl.setPointerCapture?.(event.pointerId);
+      dragGhost = cardEl.cloneNode(true);
+      dragGhost.classList.add("dragging");
+      document.body.appendChild(dragGhost);
+
+      const originCell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+      originCell?.classList.add("drag-origin");
+
+      moveGhost(event.clientX, event.clientY);
+
+      document.body.classList.add("is-dragging-card");
+      window.addEventListener("pointermove", onDragMove, { passive: false });
+      window.addEventListener("pointerup", onDragEnd, { once: true });
+
+      renderLegalOnly();
+    }
+
+    function moveGhost(x, y) {
+      if (!dragGhost) return;
+      dragGhost.style.transform = `translate(${x - 43}px, ${y - 51}px) scale(1.04)`;
+    }
+
+    function onDragMove(event) {
+      if (!dragging) return;
+      event.preventDefault();
+
+      const dx = Math.abs(event.clientX - dragging.startX);
+      const dy = Math.abs(event.clientY - dragging.startY);
+      if (dx > 4 || dy > 4) dragging.moved = true;
+
+      moveGhost(event.clientX, event.clientY);
+
+      if (dragGhost) dragGhost.style.display = "none";
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      if (dragGhost) dragGhost.style.display = "";
+
+      const dropTarget = target?.closest?.(".cell, .slot");
+      setDropHover(dropTarget);
+    }
+
+    function onDragEnd(event) {
+      if (!dragging) return;
+
+      const origin = {
+        r: dragging.r,
+        c: dragging.c,
+        wasSelected: dragging.wasSelected,
+        moved: dragging.moved
+      };
+
+      // A tap should toggle selection/deselection.
+      // A real drag should attempt a drop and suppress the follow-up click.
+      if (!origin.moved) {
+        cleanupDrag();
+
+        if (origin.wasSelected) {
+          selected = null;
+          setMessage("Selection cleared.");
+        } else {
+          selected = { r: origin.r, c: origin.c };
+          const card = grid[origin.r][origin.c];
+          if (card) setMessage(`${cardText(card)} selected.`);
+        }
+
+        suppressClickAfterDrag = true;
+        setTimeout(() => suppressClickAfterDrag = false, 0);
+        render();
+        return;
+      }
+
+      if (dragGhost) dragGhost.style.display = "none";
+      const target = document.elementFromPoint(event.clientX, event.clientY);
+      if (dragGhost) dragGhost.style.display = "";
+
+      const dropTarget = target?.closest?.(".cell, .slot");
+      const didMove = handleDrop(dropTarget);
+
+      cleanupDrag();
+
+      if (!didMove) {
+        selected = { r: origin.r, c: origin.c };
+        render();
+      }
+
+      suppressClickAfterDrag = true;
+      setTimeout(() => suppressClickAfterDrag = false, 0);
+    }
+
+    function handleDrop(dropTarget) {
+      if (!dropTarget || !selected) return false;
+
+      if (dropTarget.classList.contains("cell")) {
+        const r = Number(dropTarget.dataset.row);
+        const c = Number(dropTarget.dataset.col);
+        const card = grid[selected.r][selected.c];
+
+        if (!card || grid[r][c]) return false;
+        if (!isLegalMove(card, selected.r, selected.c, r, c)) return false;
+
+        clickCell(r, c);
+        return true;
+      }
+
+      if (dropTarget.classList.contains("slot")) {
+        const i = Number(dropTarget.dataset.foundation);
+        const card = grid[selected.r][selected.c];
+
+        if (!card || !canMoveToFoundation(card, selected.r, selected.c, i)) return false;
+
+        clickFoundation(i);
+        return true;
+      }
+
+      return false;
+    }
+
+    function setDropHover(target) {
+      if (dragHover === target) return;
+
+      if (dragHover) dragHover.classList.remove("drop-hover");
+      dragHover = null;
+
+      if (!target || !selected) return;
+
+      let legal = false;
+      const card = grid[selected.r][selected.c];
+
+      if (target.classList.contains("cell")) {
+        const r = Number(target.dataset.row);
+        const c = Number(target.dataset.col);
+        legal = card && !grid[r][c] && isLegalMove(card, selected.r, selected.c, r, c);
+      }
+
+      if (target.classList.contains("slot")) {
+        const i = Number(target.dataset.foundation);
+        legal = card && canMoveToFoundation(card, selected.r, selected.c, i);
+      }
+
+      if (legal) {
+        dragHover = target;
+        dragHover.classList.add("drop-hover");
+      }
+    }
+
+    function cleanupDrag() {
+      document.querySelectorAll(".drag-origin").forEach(el => el.classList.remove("drag-origin"));
+      if (dragHover) dragHover.classList.remove("drop-hover");
+      dragHover = null;
+
+      if (dragGhost) {
+        dragGhost.remove();
+        dragGhost = null;
+      }
+
+      window.removeEventListener("pointermove", onDragMove);
+      document.body.classList.remove("is-dragging-card");
+      dragging = null;
+    }
+
+    function renderLegalOnly() {
+      render();
+    }
+
+    function checkDailyReset() {
+      if (
+        gameMode === "daily" &&
+        activeDailySeed !== currentDailySeed()
+      ) {
+        const oldSeed = activeDailySeed;
+
+        if (
+          profileStats.lastDailyStartedSeed === oldSeed &&
+          profileStats.lastDailyCompletedSeed !== oldSeed
+        ) {
+          profileStats.bestDailyPerfectStreak = Math.max(
+            profileStats.bestDailyPerfectStreak || 0,
+            displayBestStreak()
+          );
+
+          profileStats.currentDailyPerfectStreak = 0;
+
+          saveProfileStats();
+        }
+        activeDailySeed = currentDailySeed();
+
+        if (!loadActiveRun("daily")) {
+          newGame();
+        }
+      }
+    }
+
+    function displayCurrentStreak() {
+      if (gameMode === "daily") {
+        const carried = profileStats.currentDailyPerfectStreak || 0;
+
+        return dailyCarryStillAlive
+          ? carried + currentPerfectStreak
+          : currentPerfectStreak;
+      }
+
+      const carried = randomStats.currentPerfectStreak || 0;
+
+      return randomCarryStillAlive
+        ? carried + currentPerfectStreak
+        : currentPerfectStreak;
+    }
+
+    function displayBestStreak() {
+      if (gameMode === "daily") {
+        const carried = profileStats.currentDailyPerfectStreak || 0;
+
+        const liveDailyBest = dailyCarryStillAlive
+          ? carried + runBestPerfectStreak
+          : runBestPerfectStreak;
+
+        return Math.max(
+          profileStats.bestDailyPerfectStreak || 0,
+          liveDailyBest
+        );
+      }
+
+      const carried = randomStats.currentPerfectStreak || 0;
+
+      const liveRandomBest = randomCarryStillAlive
+        ? carried + runBestPerfectStreak
+        : runBestPerfectStreak;
+
+      return Math.max(
+        randomStats.bestPerfectStreak || 0,
+        liveRandomBest
+      );
+    }
+
+    function render() {
+      checkDailyReset();
+      const gridEl = document.getElementById("grid");
+      const fEl = document.getElementById("foundations");
+      const legalTargets = legalTargetsForSelected();
+
+      fEl.innerHTML = foundations.map((stack, i) => {
+        const top = stack[stack.length - 1];
+        const expected = expectedNextValue(stack);
+        const selectedCard = selected ? grid[selected.r][selected.c] : null;
+        const foundationLegal = !!(selectedCard && canMoveToFoundation(selectedCard, selected.r, selected.c, i));
+        const foundationIsLight = (i + 1) % 2 === 0;
+        return `
+          <div class="slot ${foundationIsLight ? "light-square" : "dark-square"} ${foundationLegal ? "legal" : ""}" data-foundation="${i}" onclick="clickFoundation(${i})">
+            ${top ? renderCard(top) : `<div>${coordText(-1, i)}<br>Open</div>`}
+          </div>
+        `;
+      }).join("");
+
+      gridEl.innerHTML = "";
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+          const card = grid[r][c];
+          const isSel = selected && selected.r === r && selected.c === c;
+          const legal = legalTargets.has(`${r},${c}`);
+          const cell = document.createElement("div");
+
+          const isLight = (r + c) % 2 === 0;
+
+          cell.className =
+            `cell ${isLight ? "light-square" : "dark-square"} ${legal ? "legal" : ""}`;
+          cell.setAttribute("data-coord", coordText(r, c));
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.onclick = () => {
+            if (suppressClickAfterDrag) {
+              suppressClickAfterDrag = false;
+              return;
+            }
+            clickCell(r, c);
+          };
+          cell.innerHTML = card ? renderCard(card, isSel) : "";
+          if (card) {
+            const cardEl = cell.querySelector(".card");
+            cardEl.dataset.row = r;
+            cardEl.dataset.col = c;
+            cardEl.addEventListener("pointerdown", startDrag);
+          }
+          gridEl.appendChild(cell);
+        }
+      }
+
+      document.getElementById("score").textContent = score;
+      document.getElementById("moves").textContent = moves;
+      document.getElementById("drawCount").textContent = drawPile.length;
+
+      document.getElementById("currentStreak").textContent = displayCurrentStreak();
+      document.getElementById("runBestStreak").textContent = displayBestStreak();
+      document.getElementById("foundationCards").textContent = `${completedFoundationCardCount()} / 52`;
+      document.getElementById("currentStreakLabel").textContent =
+        gameMode === "daily" ? "Streak" : "Streak";
+
+      document.getElementById("bestStreakLabel").textContent =
+        gameMode === "daily" ? "Longest" : "Longest";
+
+      const avg = averageEntropy();
+
+
+      document.getElementById("mobileScore").textContent = score;
+      document.getElementById("mobileCards").textContent = `${completedFoundationCardCount()} / 52`;
+      document.getElementById("mobileStreak").textContent = displayCurrentStreak();
+      document.getElementById("mobileBestStreak").textContent = displayBestStreak();
+      document.getElementById("mobileMoves").textContent = moves;
+      document.getElementById("mobileDrawPile").textContent = drawPile.length;
+
+      document.querySelectorAll(".undo-btn").forEach(button => {
+        button.disabled =
+          runCompleted ||
+          (effectiveUndoMode() === "challenge" && !undoSnapshot) ||
+          (effectiveUndoMode() === "unlimited" && history.length === 0);
+      });
+      document.querySelectorAll(".new-game-btn").forEach(button => {
+        button.disabled = gameMode === "daily";
+      });
+
+      const shareLabel =
+        completedFoundationCardCount() === 52
+          ? "Copy Results"
+          : "Copy State";
+
+      document.querySelectorAll(".copy-results-btn").forEach(button => {
+        button.textContent = shareLabel;
+      });
+
+      if (gameMode === "daily" && activeDailySeed !== currentDailySeed()) {
+        activeDailySeed = currentDailySeed();
+        newGame();
+      }
+
+      const logEl = document.getElementById("log");
+      logEl.innerHTML = logEntries.map(e => `<div class="log-entry">${e}</div>`).join("");
+      logEl.scrollTop = logEl.scrollHeight;
+
+      document.getElementById("dailyModeBtn")?.classList.toggle("active", gameMode === "daily");
+      document.getElementById("randomModeBtn")?.classList.toggle("active", gameMode === "random");
+      saveActiveRun();
+    }
+
+    function currentGridText() {
+  return grid.map((row, i) => {
+    const chessRow = 4 - i;
+
+    return `Row ${chessRow}: ` +
+      row.map(card => card ? cardText(card) : "__").join(" ");
+  }).join("\n");
+}
+
+    function foundationText() {
+      return foundations.map((stack, i) => {
+        return `F${i + 1}: ` + (stack.length ? stack.map(cardText).join("-") : "__");
+      }).join("\n");
+    }
+
+    function entropyProfileText() {
+      const entries = Object.entries(entropyProfile)
+        .map(([entropy, count]) => [Number(entropy), count])
+        .sort((a, b) => a[0] - b[0]);
+
+      if (!entries.length) return "None";
+
+      return entries
+        .map(([entropy, count]) => `+${entropy}×${count}`)
+        .join(" | ");
+    }
+
+    function buildGameLogText() {
+
+      const includeShuffle =
+        completedFoundationCardCount() === 52;
+
+      return [
+        `SolEntropy | ${gameModeLabel()}`,
+        `Entropy: ${score}`,
+        "",
+        `Entropy Accumulation: ${entropyProfileText()}`,
+        `Moves: ${moves}`,
+        `Draw pile: ${drawPile.length}`,
+        `Foundation cards: ${completedFoundationCardCount()} / 52`,
+        `Current perfect streak: ${currentPerfectStreak}`,
+        `Best streak this run: ${runBestPerfectStreak}`,
+        "",
+        "Original Deal:",
+        originalLayoutText(),
+        "",
+        ...(includeShuffle
+  ? [
+      "",
+      "Original 52-Card Shuffle:",
+      originalShuffle.length
+        ? originalShuffle.join(" ")
+        : "__"
+    ]
+  : []),
+        "Current Foundations:",
+        foundationText(),
+        "",
+        "Current Grid:",
+        currentGridText(),
+        "",
+        "Move Log:",
+        logEntries.join("\n")
+      ].join("\n");
+    }
+
+    function buildProgressText() {
+      const foundationTops = foundations
+        .map(stack => {
+          const top = stack[stack.length - 1];
+          return top ? cardText(top) : "__";
+        })
+        .join(" | ");
+
+      return [
+        `SolEntropy | ${gameModeLabel()}`,
+        `Entropy: ${score}`,
+        "",
+        `Entropy Accumulation: ${entropyProfileText()}`,
+        `Foundation Cards: ${completedFoundationCardCount()} / 52`,
+        "",
+        "Board State:",
+        formattedFoundationAndGridText(),
+        "",
+        `Draw Pile: ${drawPile.length}`,
+        `Moves: ${moves}`,
+        `Active Streak: ${displayCurrentStreak()}`,
+        ...(gameMode === "daily" ? [] : [`Undo: ${runUndoModeText()}`]),
+        'beblagg.com/entropy'
+      ].join("\n");
+    }
+
+    function buildResultsText() {
+      const foundationTops = foundations
+        .map(stack => {
+          const top = stack[stack.length - 1];
+          return top ? cardText(top) : "__";
+        })
+        .join(" | ");
+
+      return [
+        `SolEntropy | ${gameModeLabel()}`,
+        `Entropy: ${score}`,
+        "",
+        `Entropy Accumulation: ${entropyProfileText()}`,
+        `Foundation Cards: ${completedFoundationCardCount()} / 52`,
+        `Foundations: ${foundationTops}`,
+        `Moves: ${moves}`,
+        `Active Streak: ${displayCurrentStreak()}`,
+        ...(gameMode === "daily" ? [] : [`Undo: ${runUndoModeText()}`]),
+        'beblagg.com/entropy'
+      ].join("\n");
+    }
+
+    function gameModeLabel() {
+      if (gameMode === "daily") {
+        return `Daily Shuffle (${currentDailySeed()})`;
+      }
+
+      return "Random Shuffle";
+    }
+
+    function runUndoModeText() {
+      return usedUnlimitedUndoThisRun
+        ? "Unlimited"
+        : "Challenge";
+    }
+
+    function effectiveUndoMode() {
+      return gameMode === "daily"
+        ? "challenge"
+        : undoMode;
+    }
+
+    function displayCardOrBlank(card) {
+      return card ? cardText(card) : "__";
+    }
+
+    function padCell(text) {
+      return text.padEnd(3, " ");
+    }
+
+    function formattedFoundationAndGridText() {
+      const foundationLine = foundations
+        .map(stack => {
+          const top = stack[stack.length - 1];
+          return padCell(top ? cardText(top) : "____");
+        })
+        .join(" | ");
+
+      const gridLines = grid.map(row => {
+        return row
+          .map(card => padCell(card ? cardText(card) : "____"))
+          .join(" | ");
+      });
+
+      return [
+        foundationLine,
+        "--------------------------",
+        ...gridLines
+      ].join("\n");
+    }
+
+    function buildProfileStatsText() {
+  const avg = averageEntropy();
+
+  return [
+    "Entropy Daily Shuffle Stats",
+    `Best Entropy: ${profileStats.bestScore === null ? "—" : profileStats.bestScore}`,
+    `Average Entropy: ${avg === null ? "—" : avg.toFixed(1)}`,
+    `Days Completed: ${profileStats.completedRuns}`,
+    `Longest Streak: ${profileStats.bestDailyPerfectStreak || 0}`,
+    "",
+    "Daily Shuffle Results",
+    dailyEntropyHistogramText()
+  ].join("\n");
+}
+
+function dailyEntropyBuckets() {
+  const buckets = Array(11).fill(0);
+
+  profileStats.dailyEntropyScores.forEach(score => {
+    const bucket = score >= 10 ? 10 : score;
+    buckets[bucket]++;
+  });
+
+  return buckets;
+}
+
+function renderDailyEntropyChart() {
+  const chart = document.getElementById("dailyEntropyChart");
+  if (!chart) return;
+
+  const buckets = dailyEntropyBuckets();
+  const max = Math.max(...buckets, 1);
+
+  chart.innerHTML = buckets.map((count, i) => {
+    const label = i === 10 ? "10+" : i;
+    const width = count === 0 ? 0 : Math.max(8, (count / max) * 100);
+
+    return `
+      <div class="daily-chart-row">
+        <span>${label}</span>
+        <div class="daily-chart-track">
+          <div class="daily-chart-bar" style="width:${width}%"></div>
+        </div>
+        <strong>${count}</strong>
+      </div>
+    `;
+  }).join("");
+}
+
+async function copyProfileStats() {
+  const text = buildProfileStatsText();
+
+  try {
+    await navigator.clipboard.writeText(text);
+    setMessage("Profile stats copied to clipboard.");
+  } catch (err) {
+    console.log(text);
+    setMessage("Clipboard copy failed, but the profile stats were printed to the browser console.");
+  }
+}
+
+    function compactGridStateText() {
+  return grid
+    .map((row, i) => {
+      const rowNum = 4 - i;
+
+      return `${rowNum}: ` +
+        row.map(card => card ? cardText(card) : "__").join(" ");
+    })
+    .join("\n");
+}
+
+    async function copyResults() {
+      const complete = completedFoundationCardCount() === 52;
+      const text = complete
+        ? buildResultsText()
+        : buildProgressText();
+
+      try {
+        await navigator.clipboard.writeText(text);
+        setMessage(
+          complete
+            ? "Run results copied to clipboard."
+            : "Current State copied to clipboard."
+        );
+      } catch (err) {
+        console.log(text);
+        setMessage("Clipboard copy failed, but the text was printed to the browser console.");
+      }
+    }
+
+
+    async function copyGameLog() {
+      const text = buildGameLogText();
+      try {
+        await navigator.clipboard.writeText(text);
+        setMessage("Copied full original board, current state, and move log to clipboard.");
+      } catch (err) {
+        console.log(text);
+        setMessage("Clipboard copy failed, but the full log was printed to the browser console.");
+      }
+    }
+
+    function log(text) {
+      logEntries.push(text);
+    }
+
+    function closeTutorial() {
+      localStorage.setItem("entropy.v2026.05.seenTutorial", "true");
+      document.getElementById("tutorialModal").classList.remove("open");
+    }
+
+    function openProfileModal() {
+      const avg = averageEntropy();
+
+      document.getElementById("modalBestScore").textContent =
+        profileStats.bestScore === null ? "—" : profileStats.bestScore;
+
+      document.getElementById("modalAverageEntropy").textContent =
+        avg === null ? "—" : avg.toFixed(1);
+
+      document.getElementById("modalCompletedRuns").textContent =
+        profileStats.completedRuns;
+
+      document.getElementById("modalLongestStreak").textContent =
+        profileStats.bestDailyPerfectStreak || 0;
+
+      renderDailyEntropyChart();
+
+      document.getElementById("profileModal").classList.add("open");
+    }
+
+    function closeProfileModal() {
+      document.getElementById("profileModal").classList.remove("open");
+    }
+
+    function openCompletionModal() {
+  const avg = averageEntropy();
+
+  document.getElementById("completionStats").innerHTML = `
+    <div class="mini-stat">
+      <span>Final Entropy</span>
+      <strong>${score}</strong>
+    </div>
+
+    <div class="mini-stat">
+      <span>Foundation Cards</span>
+      <strong>${completedFoundationCardCount()} / 52</strong>
+    </div>
+
+    <div class="mini-stat">
+      <span>Moves</span>
+      <strong>${moves}</strong>
+    </div>
+
+    <div class="mini-stat">
+      <span>Best Streak</span>
+      <strong>${runBestPerfectStreak}</strong>
+    </div>
+
+    <div class="mini-stat">
+      <span>Profile Best</span>
+      <strong>${
+        profileStats.bestScore === null
+          ? "—"
+          : profileStats.bestScore
+      }</strong>
+    </div>
+
+    <div class="mini-stat">
+      <span>Average Entropy</span>
+      <strong>${
+        avg === null
+          ? "—"
+          : avg.toFixed(1)
+      }</strong>
+    </div>
+  `;
+
+  document
+    .getElementById("completionModal")
+    .classList.add("open");
+}
+
+function closeCompletionModal() {
+  document
+    .getElementById("completionModal")
+    .classList.remove("open");
+}
+
+    window.addEventListener("load", () => {
+      const seenTutorial = localStorage.getItem("entropy.v2026.05.seenTutorial");
+
+      if (!seenTutorial) {
+        openTutorial();
+      }
+    });
+
+    const tutorialSlides = [
+      {
+        title: "Minimize Entropy",
+        body: `
+              Build ascending foundation stacks while accumulating as little entropy as possible.<br><br>
+
+              <strong>Perfect placements (+1 rank) add 0 entropy.<br><br>
+              Imperfect placements add entropy according to the difference in ranks:</strong><br><br>
+
+              <div class="tutorial-example">
+                6 → 7 = +0<br>
+                6 → 8 = +1<br>
+                6 → J = +4
+              </div>
+
+              <br>
+
+              The game ends when all 52 cards are placed into the foundations.
+            `
+      },
+
+        {
+          title: "Foundations",
+          body:
+                `
+          Foundations are the four stacks at the top of the board.<br><br>
+
+          Move cards there to build ascending sequences and minimize entropy.<br><br>
+
+          <div class="tutorial-example">
+            K → A → 2 → 3 = +0 entropy<br>
+            K → A → 3 → 6 = +3 entropy
+          </div>
+
+          <br>
+
+          <strong>Any card can start a Foundation for +0 entropy</strong>
+        `
+        },
+
+      {
+        title: "Movement",
+        body:
+        `
+        Cards move through the grid like chess pieces (Move explanations on next slide.).<br><br>
+
+        <div class="tutorial-example">
+          ♠ Spades = ♟ Pawns<br>
+          ♣ Clubs = ♝ Bishops<br>
+          ♦ Diamonds = ♞ Knights<br>
+          ♥ Hearts = ♜ Rooks<br>
+          ♕ Queens and ♔ Kings of any suit move like their chess counterparts.
+        </div>
+
+        <br>
+
+        When a card is advanced from the back row, a card from the deck replaces it.
+      `
+      },
+
+      {
+        title: "Movement",
+        body:
+        `
+        Cards may only move into empty grid spaces or reachable foundation slots.<br><br>
+
+        <div class="tutorial-example">
+          ♟ Pawns move forward-only +1, can move into foundations forward or diagonally.<br>
+          ♝ Bishops move diagonally only.<br>
+          ♞ Knights jump in an L-shape (e.g.↑2→1).<br>
+          ♜ Rooks move in straight lines.<br>
+          ♕ Queens and ♔ Kings of any suit move freely.
+        </div>
+
+        <br>
+
+        Sliding pieces cannot move through occupied cards.
+      `
+      },
+
+      {
+        title: "Game Modes",
+        body:
+        `
+        Toggle between Daily and Random Shuffles at the top of the page.<br><br>
+
+        <b>Daily Shuffle 📅</b><br>
+        One shared shuffle each day. Everyone plays the same deal. Your stats are tracked on your profile.<br><br>
+
+        Daily Shuffles can only be completed once per day.<br><br>
+
+        <b>Random Shuffle 🎲</b><br>
+        Unlimited plays with randomly generated shuffles. Results do not contribute to your profile stats.
+        `
+
+      },
+
+      {
+        title: "Strategy",
+        body:
+        `
+        Manage your grid carefully.<br>
+        Advance cards from the back row strategically.<br>
+        Beware the endgame.<br><br>
+      `
+      }
+    ];
+
+    let tutorialIndex = 0;
+
+    function renderTutorialSlide() {
+      const slide = tutorialSlides[tutorialIndex];
+
+      document.getElementById("tutorialSlide").innerHTML = `
+        <div class="tutorial-slide-title">${slide.title}</div>
+        <div class="tutorial-slide-body">${slide.body}</div>
+      `;
+
+      document.getElementById("tutorialControls").innerHTML = `
+      ${tutorialIndex > 0
+        ? `<button class="secondary" onclick="prevTutorialSlide()">Previous</button>`
+        : `<button class="secondary tutorial-placeholder">Previous</button>`}
+
+        ${tutorialIndex < tutorialSlides.length - 1
+          ? `<button onclick="nextTutorialSlide()">Next</button>`
+          : `<button onclick="closeTutorial()">Begin</button>`}
+      `;
+    }
+
+    function openTutorial() {
+      tutorialIndex = 0;
+      document.getElementById("tutorialModal").classList.add("open");
+      renderTutorialSlide();
+    }
+
+    function closeTutorial() {
+      localStorage.setItem("entropy.v2026.05.seenTutorial", "true");
+
+      document.getElementById("tutorialModal").classList.remove("open");
+    }
+
+    function nextTutorialSlide() {
+      if (tutorialIndex < tutorialSlides.length - 1) {
+        tutorialIndex++;
+        renderTutorialSlide();
+        return;
+      }
+
+      closeTutorial();
+    }
+
+    function prevTutorialSlide() {
+      if (tutorialIndex > 0) {
+        tutorialIndex--;
+        renderTutorialSlide();
+      }
+    }
+
+    window.addEventListener("load", () => {
+      const seenTutorial =
+        localStorage.getItem("entropy.v2026.05.seenTutorial");
+
+      if (!seenTutorial) {
+        openTutorial();
+      }
+    });
+
+    if (!loadActiveRun(gameMode)) {
+      newGame();
+    } else {
+      render();
+    }
+  </script>
+  <footer class="footer">
+    SolEntropy by Brandon Blagg<br>
+    © 2026 Brandon Blagg. All rights reserved.
+  </footer>
+</body>
+</html>
