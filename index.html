@@ -2063,22 +2063,9 @@ Do not copy, distribute, modify, or commercialize without permission.
         best_streak: profileStats.bestDailyPerfectStreak || 0
       };
 
-      if (!payload.player_id || !payload.daily_seed) return false;
-
-      const pending = loadPendingDailyResults();
-
-        savePendingDailyResults(
-          pending.filter(existing =>
-            !(
-              existing.player_id === payload.player_id &&
-              existing.daily_seed === payload.daily_seed
-            )
-          )
-        );
-
-        await updatePlayerLeaderboardStats();
-
-        return true;
+      if (!payload.player_id || !payload.daily_seed) {
+        return false;
+      }
 
       const { error } = await supabaseClient
         .from("daily_results")
@@ -2088,13 +2075,31 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       if (error) {
         console.error("Daily result submit failed:", error);
+
         queuePendingDailyResult(payload);
-        setMessage("Daily saved locally. Leaderboard will sync when online.");
+
+        setMessage(
+          "Daily saved locally. Leaderboard will sync when online."
+        );
+
         return false;
       }
 
+      const pending = loadPendingDailyResults();
+
+      savePendingDailyResults(
+        pending.filter(existing =>
+          !(
+            existing.player_id === payload.player_id &&
+            existing.daily_seed === payload.daily_seed
+          )
+        )
+      );
+
       await updatePlayerLeaderboardStats();
+
       setMessage("Daily result synced to leaderboard.");
+
       return true;
     }
 
