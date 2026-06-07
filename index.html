@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.06.1800.
+Prototype version 2026.06.06.2014.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -1952,7 +1952,10 @@ function confirmNewGame() {
           runBestPerfectStreak
         );
 
-        profileStats.currentDailyPerfectStreak = displayCurrentStreak();
+        profileStats.currentDailyPerfectStreak =
+        score === 0
+          ? displayCurrentStreak()
+          : currentPerfectStreak;
 
         profileStats.bestDailyPerfectStreak = Math.max(
           profileStats.bestDailyPerfectStreak || 0,
