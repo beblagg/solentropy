@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.06.2014.
+Prototype version 2026.06.07.1139.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -609,6 +609,39 @@ Do not copy, distribute, modify, or commercialize without permission.
       display: none;
     }
 
+    .toast-message {
+      position: fixed;
+      top: 82px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+
+      max-width: min(420px, calc(100vw - 32px));
+      padding: 10px 14px;
+
+      border-radius: 999px;
+      background: rgba(20,24,28,.88);
+      border: 1px solid rgba(255,255,255,.14);
+      box-shadow: 0 12px 28px rgba(0,0,0,.35);
+
+      color: rgba(255,255,255,.92);
+      font-size: 13px;
+      font-weight: 700;
+      text-align: center;
+
+      opacity: 0;
+      pointer-events: none;
+      z-index: 7000;
+
+      transition:
+        opacity .18s ease,
+        transform .18s ease;
+    }
+
+    .toast-message.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
     .profile-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -941,6 +974,15 @@ Do not copy, distribute, modify, or commercialize without permission.
       flex-wrap: wrap;
       gap: 8px;
       margin: 14px 0;
+    }
+
+    .button-muted {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .button-muted:hover {
+      transform: none;
     }
 
     .desktop-controls {
@@ -1615,6 +1657,32 @@ Do not copy, distribute, modify, or commercialize without permission.
     <div class="tutorial-slide-title">Daily Shuffle Stats</div>
 
     <div class="tutorial-slide-body">
+      <div class="settings-action-row">
+        <div>
+          <div class="settings-label">Display Name</div>
+          <div class="settings-subtext">Shown on leaderboards</div>
+        </div>
+      </div>
+
+      <input
+        id="displayNameInput"
+        maxlength="20"
+        placeholder="Choose a name"
+        style="
+          width: 100%;
+          margin: 8px 0 14px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          border: 1px solid rgba(255,255,255,.16);
+          background: rgba(255,255,255,.08);
+          color: white;
+          font-weight: 700;
+        "
+      />
+
+      <button class="secondary" onclick="saveDisplayNameFromInput()">
+        Save Display Name
+      </button>
       <div class="mini-stat">
         <span>Best Entropy</span>
         <strong id="modalBestScore">—</strong>
@@ -1743,6 +1811,7 @@ Do not copy, distribute, modify, or commercialize without permission.
     let profileStats = loadProfileStats();
     let randomStats = loadRandomStats();
     let randomCarryStillAlive = true;
+    let toastTimer = null;
 
     const SUPABASE_URL = "https://vayhmnprgcbrjnuylxon.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nu72eTAiDUKvhEPbi7xE1A_jJaW3Y2j";
@@ -1787,10 +1856,206 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
     }
 
+
+    const BLOCKED_NAME_WORDS = [
+      "fuck",
+      "shit",
+      "bitch",
+      "cunt",
+      "nigger",
+      "faggot",
+      "retard"
+    ];
+
+    function cleanDisplayName(name) {
+      return name
+        .trim()
+        .replace(/\s+/g, " ")
+        .slice(0, 20);
+    }
+
+    function isDisplayNameAllowed(name) {
+      const normalized = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+      return !BLOCKED_NAME_WORDS.some(word =>
+        normalized.includes(word)
+      );
+    }
+
+    async function saveDisplayNameFromInput() {
+      const input = document.getElementById("displayNameInput");
+      if (!input || !currentPlayer) return;
+
+      const displayName = cleanDisplayName(input.value);
+
+      if (!displayName) {
+        setMessage("Enter a display name first.");
+        return;
+      }
+
+      if (!isDisplayNameAllowed(displayName)) {
+        setMessage("Please choose a different display name.");
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from("players")
+        .update({
+          display_name: displayName,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", currentPlayer.id);
+
+      if (error) {
+        console.error("Display name update failed:", error);
+        setMessage("That display name may already be taken.");
+        return;
+      }
+
+      setMessage("Display name saved.");
+    }
+
+
+    async function loadDisplayNameIntoProfile() {
+      if (!currentPlayer) return;
+
+      const { data, error } = await supabaseClient
+        .from("players")
+        .select("display_name")
+        .eq("id", currentPlayer.id)
+        .single();
+
+      if (error) {
+        console.error("Display name load failed:", error);
+        return;
+      }
+
+      const input = document.getElementById("displayNameInput");
+      if (input) {
+        input.value = data?.display_name || "";
+      }
+    }
+
+
+    async function submitDailyResult() {
+      if (!currentPlayer) return;
+      if (gameMode !== "daily") return;
+      if (completedFoundationCardCount() !== 52) return;
+
+      const finalActiveStreak = profileStats.currentDailyPerfectStreak || 0;
+      const finalLongestStreak = profileStats.bestDailyPerfectStreak || 0;
+
+      const { error } = await supabaseClient
+        .from("daily_results")
+        .upsert({
+          player_id: currentPlayer.id,
+          daily_seed: currentDailySeed(),
+          score,
+          moves,
+          active_streak: finalActiveStreak,
+          longest_streak: finalLongestStreak
+        }, {
+          onConflict: "player_id,daily_seed"
+        });
+
+      if (error) {
+        console.error("Daily result submit failed:", error);
+        setMessage("Daily saved locally, but leaderboard sync failed.");
+        return;
+      }
+
+      await updatePlayerLeaderboardStats();
+    }
+
+    async function updatePlayerLeaderboardStats() {
+      if (!currentPlayer) return;
+
+      const { error } = await supabaseClient
+        .from("players")
+        .update({
+          best_streak: profileStats.bestDailyPerfectStreak || 0,
+          completed_dailies: profileStats.completedRuns || 0,
+          total_entropy: profileStats.totalEntropy || 0,
+          total_moves: profileStats.totalMoves || 0,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", currentPlayer.id);
+
+      if (error) {
+        console.error("Player leaderboard stats update failed:", error);
+      }
+    }
+
+    async function loadDailyLeaderboard() {
+      const { data, error } = await supabaseClient
+        .from("daily_results")
+        .select(`
+          score,
+          moves,
+          players (
+            display_name
+          )
+        `)
+        .eq("daily_seed", currentDailySeed())
+        .order("score", { ascending: true })
+        .order("moves", { ascending: true })
+        .limit(10);
+
+      if (error) {
+        console.error("Daily leaderboard load failed:", error);
+        return [];
+      }
+
+      return data;
+    }
+
+    async function loadLongestStreaksLeaderboard() {
+      const { data, error } = await supabaseClient
+        .from("players")
+        .select("display_name, best_streak")
+        .gt("best_streak", 0)
+        .order("best_streak", { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error("Longest streaks leaderboard load failed:", error);
+        return [];
+      }
+
+      return data;
+    }
+
+    async function loadAverageEntropyLeaderboard() {
+      const { data, error } = await supabaseClient
+        .from("players")
+        .select("display_name, completed_dailies, total_entropy, total_moves")
+        .gte("completed_dailies", 10);
+
+      if (error) {
+        console.error("Average entropy leaderboard load failed:", error);
+        return [];
+      }
+
+      return data
+        .map(player => ({
+          ...player,
+          average_entropy: player.total_entropy / player.completed_dailies,
+          average_moves: player.total_moves / player.completed_dailies
+        }))
+        .sort((a, b) =>
+          a.average_entropy - b.average_entropy ||
+          a.average_moves - b.average_moves
+        )
+        .slice(0, 10);
+    }
+
     function loadProfileStats() {
       const fallback = {
         completedRuns: 0,
         bestScore: null,
+        totalMoves: 0,
         totalEntropy: 0,
         longestStreak: 0,
         dailyEntropyScores: [],
@@ -1939,7 +2204,7 @@ function confirmNewGame() {
       if (gameMode === "daily") {
         profileStats.completedRuns += 1;
         profileStats.totalEntropy += score;
-
+        profileStats.totalMoves += moves;
         profileStats.bestScore =
           profileStats.bestScore === null
             ? score
@@ -1965,18 +2230,27 @@ function confirmNewGame() {
         profileStats.lastDailyCompletedSeed = currentDailySeed();
 
         saveProfileStats();
+        submitDailyResult();
 
         setMessage(`Daily Shuffle complete. Final entropy: ${score}. Profile stats updated.`);
       } else {
-        randomStats.currentPerfectStreak = displayCurrentStreak();
+        randomStats.currentPerfectStreak =
+          score === 0
+            ? (randomStats.currentPerfectStreak || 0) + currentPerfectStreak
+            : currentPerfectStreak;
 
         randomStats.bestPerfectStreak = Math.max(
           randomStats.bestPerfectStreak || 0,
+          randomStats.currentPerfectStreak,
           displayBestStreak()
         );
 
         randomStats.runStarted = false;
         saveRandomStats();
+
+        currentPerfectStreak = 0;
+        runBestPerfectStreak = 0;
+        randomCarryStillAlive = true;
 
         setMessage(`Random Shuffle complete. Final entropy: ${score}.`);
       }
@@ -2048,7 +2322,7 @@ function confirmNewGame() {
       randomCarryStillAlive = true;
       saveOriginalLayout();
       log("Original deal saved.");
-      setMessage("New game dealt. Select a card to see legal grid moves, or place it into a foundation.");
+      setMessage("New game dealt.");
       render();
     }
 
@@ -2134,6 +2408,11 @@ function switchGameMode(mode) {
 
   gameMode = mode;
   localStorage.setItem("entropy.gameMode", gameMode);
+  setMessage(
+    mode === "daily"
+      ? "📅 Daily Shuffle"
+      : "🎲 Random Shuffle"
+  );
 
   if (!loadActiveRun(gameMode)) {
     newGame();
@@ -2220,7 +2499,7 @@ function switchGameMode(mode) {
 
       function toggleUndoMode() {
         if (gameMode === "daily") {
-          setMessage("Daily Shuffle always uses Challenge undo.");
+          setMessage("Only challenge mode is available for Daily Shuffles.");
           return;
         }
         undoMode =
@@ -2250,32 +2529,33 @@ function switchGameMode(mode) {
         undoAvailable = false;
       }
 
-    function undo() {
-      if (runCompleted) return;
+      function undo() {
+        if (runCompleted) {
+          setMessage("This run is already complete.");
+          return;
+        }
 
-      if (effectiveUndoMode() === "unlimited") {
-        if (!history.length) {
+        if (effectiveUndoMode() === "unlimited") {
+          if (!history.length) {
+            setMessage("Nothing to undo.");
+            return;
+          }
+
+          restore(history.pop());
+          undoAvailable = history.length > 0;
+          render();
+          return;
+        }
+
+        if (!undoSnapshot) {
           setMessage("Nothing to undo.");
           return;
         }
 
-        restore(history.pop());
-        undoAvailable = history.length > 0;
-        setMessage("Undid last move.");
+        restore(undoSnapshot);
+        clearUndo();
         render();
-        return;
       }
-
-      if (!undoSnapshot) {
-        setMessage("Undo is not available after a back-row draw is revealed.");
-        return;
-      }
-
-      restore(undoSnapshot);
-      clearUndo();
-      setMessage("Undid last move.");
-      render();
-    }
 
     function cardText(card) {
       return `${card.rank}${card.suit}`;
@@ -2318,7 +2598,17 @@ function switchGameMode(mode) {
     }
 
     function setMessage(text) {
-      document.getElementById("message").textContent = text;
+      const toast = document.getElementById("toastMessage");
+      if (!toast) return;
+
+      toast.textContent = text;
+      toast.classList.add("show");
+
+      clearTimeout(toastTimer);
+
+      toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 2600);
     }
 
     function showEntropyPop(foundationIndex, entropy) {
@@ -2348,7 +2638,6 @@ function switchGameMode(mode) {
       const card = grid[r][c];
       if (!card) return;
       selected = { r, c };
-      setMessage(`${cardText(card)} selected.`);
       render();
     }
 
@@ -2364,7 +2653,6 @@ function switchGameMode(mode) {
       // Clicking the selected card clears selection.
       if (selected.r === r && selected.c === c) {
         selected = null;
-        setMessage("Selection cleared.");
         render();
         return;
       }
@@ -2400,7 +2688,6 @@ function switchGameMode(mode) {
       moves++;
       log(`${moves}. ${cardNotation(fromCard)}: ${fromNotation} -> ${toNotation}`);
       selected = null;
-      setMessage(`${cardText(fromCard)} moved from ${fromNotation} to ${toNotation}.`);
       render();
     }
 
@@ -2416,6 +2703,7 @@ function switchGameMode(mode) {
     }
 
     function clickFoundation(i) {
+      if (runCompleted) return;
       if (!selected) {
         setMessage("Select a grid card first, then choose a foundation.");
         return;
@@ -2425,7 +2713,6 @@ function switchGameMode(mode) {
       if (!card) return;
 
       if (!canMoveToFoundation(card, selected.r, selected.c, i)) {
-        setMessage(`${cardText(card)} cannot move to foundation ${coordText(-1, i)} from ${coordText(selected.r, selected.c)}.`);
         return;
       }
 
@@ -2493,7 +2780,6 @@ function switchGameMode(mode) {
 
       log(`${moves}. ${cardNotation(card)}: ${fromNotation} -> ${toNotation} (+${entropy} entropy)`);
       selected = null;
-      setMessage(`${cardText(card)} moved from ${fromNotation} to ${toNotation}. Added ${entropy} entropy.`);
       render();
       showEntropyPop(i, entropy);
       playEntropySound(entropy);
@@ -2846,11 +3132,9 @@ gain.gain.exponentialRampToValueAtTime(
 
         if (origin.wasSelected) {
           selected = null;
-          setMessage("Selection cleared.");
         } else {
           selected = { r: origin.r, c: origin.c };
           const card = grid[origin.r][origin.c];
-          if (card) setMessage(`${cardText(card)} selected.`);
         }
 
         suppressClickAfterDrag = true;
@@ -3098,13 +3382,16 @@ gain.gain.exponentialRampToValueAtTime(
       document.getElementById("mobileDrawPile").textContent = drawPile.length;
 
       document.querySelectorAll(".undo-btn").forEach(button => {
-        button.disabled =
+        const unavailable =
           runCompleted ||
           (effectiveUndoMode() === "challenge" && !undoSnapshot) ||
           (effectiveUndoMode() === "unlimited" && history.length === 0);
+
+        button.classList.toggle("button-muted", unavailable);
       });
+
       document.querySelectorAll(".new-game-btn").forEach(button => {
-        button.disabled = gameMode === "daily";
+        button.classList.toggle("button-muted", gameMode === "daily");
       });
 
       const shareLabel =
@@ -3389,7 +3676,7 @@ async function copyProfileStats() {
       const text = buildGameLogText();
       try {
         await navigator.clipboard.writeText(text);
-        setMessage("Copied full original board, current state, and move log to clipboard.");
+        setMessage("Game info copied to clipboard.");
       } catch (err) {
         console.log(text);
         setMessage("Clipboard copy failed, but the full log was printed to the browser console.");
@@ -3423,6 +3710,8 @@ async function copyProfileStats() {
       renderDailyEntropyChart();
 
       document.getElementById("profileModal").classList.add("open");
+
+      loadDisplayNameIntoProfile();
     }
 
     function closeProfileModal() {
@@ -3430,52 +3719,86 @@ async function copyProfileStats() {
     }
 
     function openCompletionModal() {
-  const avg = averageEntropy();
+      const avg = averageEntropy();
 
-  document.getElementById("completionStats").innerHTML = `
-    <div class="mini-stat">
-      <span>Final Entropy</span>
-      <strong>${score}</strong>
-    </div>
+      const activeStreak =
+        gameMode === "daily"
+          ? profileStats.currentDailyPerfectStreak || 0
+          : randomStats.currentPerfectStreak || 0;
 
-    <div class="mini-stat">
-      <span>Foundation Cards</span>
-      <strong>${completedFoundationCardCount()} / 52</strong>
-    </div>
+      const longestStreak =
+        gameMode === "daily"
+          ? profileStats.bestDailyPerfectStreak || 0
+          : randomStats.bestPerfectStreak || 0;
 
-    <div class="mini-stat">
-      <span>Moves</span>
-      <strong>${moves}</strong>
-    </div>
+      const modeIcon = gameMode === "daily" ? "📅" : "🎲";
 
-    <div class="mini-stat">
-      <span>Best Streak</span>
-      <strong>${runBestPerfectStreak}</strong>
-    </div>
+      const modeSpecificStats =
+        gameMode === "daily"
+          ? `
+            <div class="mini-stat">
+              <span>Active Streak (${modeIcon})</span>
+              <strong>${activeStreak}</strong>
+            </div>
 
-    <div class="mini-stat">
-      <span>Profile Best</span>
-      <strong>${
-        profileStats.bestScore === null
-          ? "—"
-          : profileStats.bestScore
-      }</strong>
-    </div>
+            <div class="mini-stat">
+              <span>Longest Streak (${modeIcon})</span>
+              <strong>${longestStreak}</strong>
+            </div>
 
-    <div class="mini-stat">
-      <span>Average Entropy</span>
-      <strong>${
-        avg === null
-          ? "—"
-          : avg.toFixed(1)
-      }</strong>
-    </div>
-  `;
+            <div class="mini-stat">
+              <span>Profile Best Entropy</span>
+              <strong>${
+                profileStats.bestScore === null
+                  ? "—"
+                  : profileStats.bestScore
+              }</strong>
+            </div>
 
-  document
-    .getElementById("completionModal")
-    .classList.add("open");
-}
+            <div class="mini-stat">
+              <span>Average Entropy</span>
+              <strong>${
+                avg === null
+                  ? "—"
+                  : avg.toFixed(1)
+              }</strong>
+            </div>
+          `
+          : `
+            <div class="mini-stat">
+              <span>Active Streak (${modeIcon})</span>
+              <strong>${activeStreak}</strong>
+            </div>
+
+            <div class="mini-stat">
+              <span>Longest Streak (${modeIcon})</span>
+              <strong>${longestStreak}</strong>
+            </div>
+          `;
+
+      document.getElementById("completionStats").innerHTML = `
+        <div class="mini-stat">
+          <span>Final Entropy</span>
+          <strong>${score}</strong>
+        </div>
+
+        <div class="mini-stat">
+          <span>Foundation Cards</span>
+          <strong>${completedFoundationCardCount()} / 52</strong>
+        </div>
+
+        <div class="mini-stat">
+          <span>Moves</span>
+          <strong>${moves}</strong>
+        </div>
+
+        ${modeSpecificStats}
+      `;
+
+      document
+        .getElementById("completionModal")
+        .classList.add("open");
+    }
 
 function closeCompletionModal() {
   document
@@ -3669,5 +3992,6 @@ function closeCompletionModal() {
     SolEntropy by Brandon Blagg<br>
     © 2026 Brandon Blagg. All rights reserved.
   </footer>
+  <div id="toastMessage" class="toast-message"></div>
 </body>
 </html>
