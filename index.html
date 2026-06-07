@@ -2063,6 +2063,8 @@ Do not copy, distribute, modify, or commercialize without permission.
         best_streak: profileStats.bestDailyPerfectStreak || 0
       };
 
+      if (!payload.player_id || !payload.daily_seed) return false;
+
       const pending = loadPendingDailyResults();
 
         savePendingDailyResults(
@@ -2092,7 +2094,7 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
 
       await updatePlayerLeaderboardStats();
-
+      setMessage("Daily result synced to leaderboard.");
       return true;
     }
 
