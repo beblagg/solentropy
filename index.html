@@ -603,6 +603,79 @@ Do not copy, distribute, modify, or commercialize without permission.
       text-align: right;
     }
 
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      margin-bottom: 18px;
+      font-size: 13px;
+    }
+
+    .leaderboard-table th,
+    .leaderboard-table td {
+      padding: 8px 6px;
+      border-bottom: 1px solid rgba(255,255,255,.09);
+    }
+
+    .leaderboard-table th {
+      color: var(--muted);
+      text-align: center;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .leaderboard-table td {
+      text-align: center;
+    }
+
+    .leaderboard-table td {
+      color: white;
+    }
+
+    .leaderboard-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+
+      padding: 4px;
+      margin: 8px 0 18px;
+
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .leaderboard-tabs button {
+      min-height: unset;
+      padding: 8px 10px;
+      border-radius: 999px;
+
+      background: transparent;
+      color: var(--muted);
+      box-shadow: none;
+
+      font-size: 13px;
+    }
+
+    .leaderboard-tabs button.active {
+      background: var(--accent);
+      color: #17150d;
+    }
+
+    .leaderboard-table tr.current-player-row {
+      background: rgba(244,211,94,.10);
+    }
+
+    .leaderboard-table tr.current-player-row td {
+      color: white;
+      font-weight: 800;
+    }
+
+    .profile-section-title {
+      text-align: center;
+    }
+
     .message,
     .rules,
     .log {
@@ -1069,6 +1142,7 @@ Do not copy, distribute, modify, or commercialize without permission.
       font-size: 12px;
       line-height: 1.45;
       margin-top: 10px;
+      text-align: center;
     }
 
     .mobile-hud {
@@ -1723,6 +1797,24 @@ Do not copy, distribute, modify, or commercialize without permission.
   </div>
 </div>
 
+<div id="leaderboardModal" class="tutorial-modal">
+  <div class="tutorial-content">
+    <button class="tutorial-x" onclick="closeLeaderboardModal()">✕</button>
+
+    <div class="tutorial-slide-title">Leaderboards</div>
+
+    <div class="leaderboard-tabs">
+      <button id="dailyLeaderboardTab" onclick="setLeaderboardView('daily')">Daily</button>
+      <button id="streakLeaderboardTab" onclick="setLeaderboardView('streaks')">Streaks</button>
+      <button id="averageLeaderboardTab" onclick="setLeaderboardView('average')">Average</button>
+    </div>
+
+    <div class="tutorial-slide-body" id="leaderboardContent">
+      Loading...
+    </div>
+  </div>
+</div>
+
 <div id="aboutModal" class="tutorial-modal">
   <div class="tutorial-content">
 
@@ -1812,6 +1904,13 @@ Do not copy, distribute, modify, or commercialize without permission.
     let randomStats = loadRandomStats();
     let randomCarryStillAlive = true;
     let toastTimer = null;
+    let leaderboardData = {
+      daily: [],
+      streaks: [],
+      average: []
+    };
+
+    let leaderboardView = "daily";
 
     const SUPABASE_URL = "https://vayhmnprgcbrjnuylxon.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nu72eTAiDUKvhEPbi7xE1A_jJaW3Y2j";
@@ -1839,7 +1938,9 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       currentPlayer = sessionData.session.user;
 
+
       await ensurePlayerProfile();
+      await syncPendingDailyResults();
     }
 
     async function ensurePlayerProfile() {
@@ -1938,35 +2039,61 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
     }
 
-
-    async function submitDailyResult() {
+    async function syncPendingDailyResults() {
       if (!currentPlayer) return;
-      if (gameMode !== "daily") return;
-      if (completedFoundationCardCount() !== 52) return;
 
-      const finalActiveStreak = profileStats.currentDailyPerfectStreak || 0;
-      const finalLongestStreak = profileStats.bestDailyPerfectStreak || 0;
+      const pending = loadPendingDailyResults();
+
+      for (const result of pending) {
+        if (result.player_id !== currentPlayer.id) continue;
+
+        await submitDailyResult(result);
+      }
+    }
+
+    async function submitDailyResult(result = null) {
+      if (!currentPlayer) return false;
+
+      const payload = result || {
+        player_id: currentPlayer.id,
+        daily_seed: currentDailySeed(),
+        score,
+        moves,
+        active_streak: profileStats.currentDailyPerfectStreak || 0,
+        best_streak: profileStats.bestDailyPerfectStreak || 0
+      };
+
+      const pending = loadPendingDailyResults();
+
+        savePendingDailyResults(
+          pending.filter(existing =>
+            !(
+              existing.player_id === payload.player_id &&
+              existing.daily_seed === payload.daily_seed
+            )
+          )
+        );
+
+        await updatePlayerLeaderboardStats();
+
+        return true;
 
       const { error } = await supabaseClient
         .from("daily_results")
-        .upsert({
-          player_id: currentPlayer.id,
-          daily_seed: currentDailySeed(),
-          score,
-          moves,
-          active_streak: finalActiveStreak,
-          best_streak: finalLongestStreak
-        }, {
+        .upsert(payload, {
           onConflict: "player_id,daily_seed"
         });
 
       if (error) {
         console.error("Daily result submit failed:", error);
-        setMessage("Daily saved locally, but leaderboard sync failed.");
-        return;
+        queuePendingDailyResult(payload);
+        setMessage("Daily saved locally. Leaderboard will sync when online.");
+        return false;
       }
 
       await updatePlayerLeaderboardStats();
+
+      return true;
     }
 
     async function updatePlayerLeaderboardStats() {
@@ -1992,9 +2119,10 @@ Do not copy, distribute, modify, or commercialize without permission.
       const { data, error } = await supabaseClient
         .from("daily_results")
         .select(`
+          player_id,
           score,
           moves,
-          players (
+          players!daily_results_player_id_players_fkey (
             display_name
           )
         `)
@@ -2014,7 +2142,7 @@ Do not copy, distribute, modify, or commercialize without permission.
     async function loadLongestStreaksLeaderboard() {
       const { data, error } = await supabaseClient
         .from("players")
-        .select("display_name, best_streak")
+        .select("id, display_name, best_streak")
         .gt("best_streak", 0)
         .order("best_streak", { ascending: false })
         .limit(10);
@@ -2029,16 +2157,41 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     async function loadAverageEntropyLeaderboard() {
       const { data, error } = await supabaseClient
-        .from("players")
-        .select("display_name, completed_dailies, total_entropy, total_moves")
-        .gte("completed_dailies", 10);
+        .from("daily_results")
+        .select(`
+          player_id,
+          score,
+          moves,
+          players!daily_results_player_id_players_fkey (
+            display_name
+          )
+        `);
 
       if (error) {
         console.error("Average entropy leaderboard load failed:", error);
         return [];
       }
 
-      return data
+      const byPlayer = {};
+
+      data.forEach(row => {
+        if (!byPlayer[row.player_id]) {
+          byPlayer[row.player_id] = {
+            id: row.player_id,
+            display_name: row.players?.display_name,
+            completed_dailies: 0,
+            total_entropy: 0,
+            total_moves: 0
+          };
+        }
+
+        byPlayer[row.player_id].completed_dailies++;
+        byPlayer[row.player_id].total_entropy += row.score;
+        byPlayer[row.player_id].total_moves += row.moves;
+      });
+
+      return Object.values(byPlayer)
+        .filter(player => player.completed_dailies >= 10)
         .map(player => ({
           ...player,
           average_entropy: player.total_entropy / player.completed_dailies,
@@ -2049,6 +2202,197 @@ Do not copy, distribute, modify, or commercialize without permission.
           a.average_moves - b.average_moves
         )
         .slice(0, 10);
+    }
+
+    function playerName(row) {
+      return row.players?.display_name || row.display_name || "Anonymous";
+    }
+
+    function leaderboardTable(headers, rows, emptyText = "No results yet.") {
+      if (!rows.length) {
+        return `<div class="fine-print">${emptyText}</div>`;
+      }
+
+      return `
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              ${headers.map(h => `<th>${h}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function leaderboardRow(rank, rowId, cells) {
+      const isCurrentPlayer =
+        currentPlayer && rowId === currentPlayer.id;
+
+      return `
+        <tr class="${isCurrentPlayer ? "current-player-row" : ""}">
+          <td>${rank}</td>
+          ${cells.map(cell => `<td>${cell}</td>`).join("")}
+        </tr>
+      `;
+    }
+
+    async function openLeaderboardModal() {
+      await syncPendingDailyResults();
+      const content = document.getElementById("leaderboardContent");
+      content.innerHTML = "Loading leaderboards...";
+
+      document.getElementById("leaderboardModal").classList.add("open");
+
+      const [daily, streaks, averages] = await Promise.all([
+        loadDailyLeaderboard(),
+        loadLongestStreaksLeaderboard(),
+        loadAverageEntropyLeaderboard()
+      ]);
+
+      leaderboardData = {
+        daily,
+        streaks,
+        average: averages
+      };
+
+      setLeaderboardView("daily");
+    }
+
+    function setLeaderboardView(view) {
+      leaderboardView = view;
+
+      document
+        .getElementById("dailyLeaderboardTab")
+        ?.classList.toggle("active", view === "daily");
+
+      document
+        .getElementById("streakLeaderboardTab")
+        ?.classList.toggle("active", view === "streaks");
+
+      document
+        .getElementById("averageLeaderboardTab")
+        ?.classList.toggle("active", view === "average");
+
+      renderLeaderboardView();
+    }
+
+    function renderLeaderboardView() {
+      const content = document.getElementById("leaderboardContent");
+
+      if (leaderboardView === "daily") {
+        content.innerHTML = `
+          <div class="profile-section-title">
+            📅 Daily Shuffle • ${formattedDailyDate()}
+          </div>
+
+          ${leaderboardTable(
+            ["User", "Entropy", "Moves"],
+            leaderboardData.daily.map((row, index) =>
+              leaderboardRow(index + 1, row.player_id, [
+                playerName(row),
+                row.score,
+                row.moves
+              ])
+            ),
+            "No completed Daily Shuffles yet."
+          )}
+        `;
+        return;
+      }
+
+      if (leaderboardView === "streaks") {
+        content.innerHTML = `
+          <div class="profile-section-title">
+            Longest Streaks
+          </div>
+
+          ${leaderboardTable(
+            ["User", "Streak"],
+            leaderboardData.streaks.map((row, index) =>
+              leaderboardRow(index + 1, row.id, [
+                playerName(row),
+                row.best_streak
+              ])
+            ),
+            "No streaks yet."
+          )}
+        `;
+        return;
+      }
+
+      if (leaderboardView === "average") {
+        content.innerHTML = `
+          <div class="profile-section-title">
+            Best Average Entropy
+          </div>
+
+          ${leaderboardTable(
+            ["User", "Avg Entropy", "Avg Moves"],
+            leaderboardData.average.map((row, index) =>
+              leaderboardRow(index + 1, row.id, [
+                playerName(row),
+                row.average_entropy.toFixed(1),
+                row.average_moves.toFixed(1)
+              ])
+            ),
+            "Complete 10 Daily Shuffles to qualify."
+          )}
+        `;
+      }
+    }
+
+    function formattedDailyDate() {
+      const [year, month, day] = currentDailySeed().split("-").map(Number);
+
+      return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+
+    function closeLeaderboardModal() {
+      document.getElementById("leaderboardModal").classList.remove("open");
+    }
+
+
+    function pendingDailyResultsKey() {
+      return "solentropy.pendingDailyResults";
+    }
+
+    function loadPendingDailyResults() {
+      try {
+        return JSON.parse(
+          localStorage.getItem(pendingDailyResultsKey())
+        ) || [];
+      } catch (err) {
+        return [];
+      }
+    }
+
+    function savePendingDailyResults(results) {
+      localStorage.setItem(
+        pendingDailyResultsKey(),
+        JSON.stringify(results)
+      );
+    }
+
+    function queuePendingDailyResult(result) {
+      const pending = loadPendingDailyResults();
+
+      const withoutDuplicate = pending.filter(existing =>
+        !(
+          existing.player_id === result.player_id &&
+          existing.daily_seed === result.daily_seed
+        )
+      );
+
+      withoutDuplicate.push(result);
+      savePendingDailyResults(withoutDuplicate);
     }
 
     function loadProfileStats() {
@@ -2230,7 +2574,19 @@ function confirmNewGame() {
         profileStats.lastDailyCompletedSeed = currentDailySeed();
 
         saveProfileStats();
-        submitDailyResult();
+        const completedDailyResult = {
+          player_id: currentPlayer?.id,
+          daily_seed: currentDailySeed(),
+          score,
+          moves,
+          active_streak: profileStats.currentDailyPerfectStreak || 0,
+          best_streak: profileStats.bestDailyPerfectStreak || 0
+        };
+
+        if (completedDailyResult.player_id) {
+          queuePendingDailyResult(completedDailyResult);
+          submitDailyResult(completedDailyResult);
+        }
 
         setMessage(`Daily Shuffle complete. Final entropy: ${score}. Profile stats updated.`);
       } else {
@@ -2472,10 +2828,6 @@ function switchGameMode(mode) {
       function openSettingsModal() {
         updateSettingsDisplay();
         document.getElementById("settingsModal").classList.add("open");
-      }
-
-      function openLeaderboardModal() {
-        setMessage("Leaderboards coming soon.");
       }
 
       function openAboutModal() {
@@ -3812,6 +4164,9 @@ function closeCompletionModal() {
       if (!seenTutorial) {
         openTutorial();
       }
+    });
+    window.addEventListener("online", () => {
+      syncPendingDailyResults();
     });
 
     const tutorialSlides = [
