@@ -1958,14 +1958,10 @@ Do not copy, distribute, modify, or commercialize without permission.
     let dragGhost = null;
     let dragHover = null;
     let suppressClickAfterDrag = false;
-    let currentPerfectStreak = 0;
-    let runBestPerfectStreak = 0;
     let firstPlacement = null;
     let runCompleted = false;
-    let dailyCarryStillAlive = true;
     let profileStats = loadProfileStats();
     let randomStats = loadRandomStats();
-    let randomCarryStillAlive = true;
     let toastTimer = null;
     let leaderboardData = {
       daily: [],
@@ -2023,7 +2019,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       const { data: existing, error: fetchError } = await supabaseClient
         .from("players")
-        .select("id")
+        .select("id, best_streak")
         .eq("id", currentPlayer.id)
         .maybeSingle();
 
@@ -2032,7 +2028,16 @@ Do not copy, distribute, modify, or commercialize without permission.
         return;
       }
 
-      if (existing) return;
+      if (existing) {
+        profileStats.bestDailyPerfectStreak = Math.max(
+          profileStats.bestDailyPerfectStreak || 0,
+          existing.best_streak || 0
+        );
+
+        saveProfileStats();
+
+        return;
+      }
 
       const { error } = await supabaseClient
         .from("players")
@@ -2193,7 +2198,6 @@ Do not copy, distribute, modify, or commercialize without permission.
         daily_seed: currentDailySeed(),
         score,
         moves,
-        active_streak: profileStats.currentDailyPerfectStreak || 0,
         first_placement: firstPlacement || null
       };
 
@@ -2243,6 +2247,7 @@ Do not copy, distribute, modify, or commercialize without permission.
       const { error } = await supabaseClient
         .from("players")
         .update({
+          active_streak: profileStats.currentDailyPerfectStreak || 0,
           best_streak: profileStats.bestDailyPerfectStreak || 0,
           completed_dailies: profileStats.completedRuns || 0,
           total_entropy: profileStats.totalEntropy || 0,
@@ -2887,11 +2892,6 @@ function confirmNewGame() {
       randomStats.runStarted &&
       completedFoundationCardCount() < 52
     ) {
-      randomStats.bestPerfectStreak = Math.max(
-        randomStats.bestPerfectStreak || 0,
-        displayBestStreak()
-      );
-
       randomStats.currentPerfectStreak = 0;
       randomStats.runStarted = false;
       saveRandomStats();
@@ -2928,25 +2928,6 @@ function confirmNewGame() {
 
         profileStats.dailyEntropyScores.push(score);
 
-        profileStats.longestStreak = Math.max(
-          profileStats.longestStreak,
-          runBestPerfectStreak
-        );
-
-        const carriedDailyStreak = profileStats.currentDailyPerfectStreak || 0;
-
-        profileStats.currentDailyPerfectStreak =
-          score === 0
-            ? carriedDailyStreak + currentPerfectStreak
-            : currentPerfectStreak;
-
-        profileStats.bestDailyPerfectStreak = Math.max(
-          profileStats.bestDailyPerfectStreak || 0,
-          profileStats.currentDailyPerfectStreak,
-          displayBestStreak()
-        );
-
-
         profileStats.lastDailyCompletedSeed = currentDailySeed();
 
         saveProfileStats();
@@ -2966,23 +2947,9 @@ function confirmNewGame() {
 
         setMessage(`Daily Shuffle complete. Final entropy: ${score}. Profile stats updated.`);
       } else {
-        randomStats.currentPerfectStreak =
-          score === 0
-            ? (randomStats.currentPerfectStreak || 0) + currentPerfectStreak
-            : currentPerfectStreak;
-
-        randomStats.bestPerfectStreak = Math.max(
-          randomStats.bestPerfectStreak || 0,
-          randomStats.currentPerfectStreak,
-          displayBestStreak()
-        );
-
         randomStats.runStarted = false;
         saveRandomStats();
 
-        currentPerfectStreak = 0;
-        runBestPerfectStreak = 0;
-        randomCarryStillAlive = true;
 
         setMessage(`Random Shuffle complete. Final entropy: ${score}.`);
       }
@@ -3048,11 +3015,7 @@ function confirmNewGame() {
       undoAvailable = false;
       usedUnlimitedUndoThisRun = effectiveUndoMode() === "unlimited";
       logEntries = [];
-      currentPerfectStreak = 0;
-      runBestPerfectStreak = 0;
       runCompleted = false;
-      dailyCarryStillAlive = true;
-      randomCarryStillAlive = true;
       saveOriginalLayout();
       log("Original deal saved.");
       setMessage("New game dealt.");
@@ -3154,8 +3117,71 @@ function switchGameMode(mode) {
   render();
 }
 
-    function snapshot() {
-      return JSON.stringify({ drawPile, grid, foundations, selected, score, moves, logEntries, originalLayout, originalShuffle, currentPerfectStreak, runBestPerfectStreak, runCompleted, usedUnlimitedUndoThisRun, entropyProfile, dailyCarryStillAlive,randomCarryStillAlive,firstPlacement });
+    function snapshot(includeStreaks = false) {
+      const state = {
+        drawPile,
+        grid,
+        foundations,
+        selected,
+        score,
+        moves,
+        logEntries,
+        originalLayout,
+        originalShuffle,
+        runCompleted,
+        usedUnlimitedUndoThisRun,
+        entropyProfile,
+        firstPlacement
+      };
+
+      if (includeStreaks) {
+        state.streaks = streakSnapshot();
+      }
+
+      return JSON.stringify(state);
+    }
+
+    function streakSnapshot() {
+      return {
+        currentDailyPerfectStreak:
+          profileStats.currentDailyPerfectStreak || 0,
+
+        bestDailyPerfectStreak:
+          profileStats.bestDailyPerfectStreak || 0,
+
+        randomCurrentPerfectStreak:
+          randomStats.currentPerfectStreak || 0,
+
+        randomBestPerfectStreak:
+          randomStats.bestPerfectStreak || 0,
+
+        randomRunStarted:
+          !!randomStats.runStarted
+      };
+    }
+
+    function restoreStreakSnapshot(streaks) {
+      if (!streaks) return;
+
+      profileStats.currentDailyPerfectStreak =
+        streaks.currentDailyPerfectStreak || 0;
+
+      profileStats.bestDailyPerfectStreak =
+        streaks.bestDailyPerfectStreak || 0;
+
+      randomStats.currentPerfectStreak =
+        streaks.randomCurrentPerfectStreak || 0;
+
+      randomStats.bestPerfectStreak =
+        streaks.randomBestPerfectStreak || 0;
+
+      randomStats.runStarted =
+        !!streaks.randomRunStarted;
+
+      saveProfileStats();
+      saveRandomStats();
+
+      updatePlayerLeaderboardStats();
     }
 
     function restore(state) {
@@ -3169,19 +3195,16 @@ function switchGameMode(mode) {
       logEntries = s.logEntries;
       originalLayout = s.originalLayout || [];
       originalShuffle = s.originalShuffle || [];
-      currentPerfectStreak = s.currentPerfectStreak || 0;
-      runBestPerfectStreak = s.runBestPerfectStreak || 0;
       firstPlacement = s.firstPlacement || null;
       runCompleted = s.runCompleted || false;
       usedUnlimitedUndoThisRun = s.usedUnlimitedUndoThisRun ?? false;
-      dailyCarryStillAlive = s.dailyCarryStillAlive ?? true;
-      randomCarryStillAlive = s.randomCarryStillAlive ?? true;
       entropyProfile = s.entropyProfile || {};
+      restoreStreakSnapshot(s.streaks);
       render();
     }
 
     function saveUndoSnapshot() {
-      const state = snapshot();
+      const state = snapshot(true);
 
       history.push(state);
 
@@ -3464,39 +3487,40 @@ function switchGameMode(mode) {
       moves++;
 
       if (entropy === 0) {
-        currentPerfectStreak++;
-        runBestPerfectStreak = Math.max(
-          runBestPerfectStreak,
-          currentPerfectStreak
-        );
-
-        // if (gameMode === "daily") {
-        //   profileStats.bestDailyPerfectStreak = Math.max(
-        //     profileStats.bestDailyPerfectStreak || 0,
-        //     displayBestStreak()
-        //   );
-        //
-        //   saveProfileStats();
-        // }
-        // if (gameMode === "random") {
-        //   randomStats.bestPerfectStreak = Math.max(
-        //     randomStats.bestPerfectStreak || 0,
-        //     displayBestStreak()
-        //   );
-        //
-        //   saveRandomStats();
-        // }
-
-      } else {
         if (gameMode === "daily") {
-          dailyCarryStillAlive = false;
+          profileStats.currentDailyPerfectStreak =
+            (profileStats.currentDailyPerfectStreak || 0) + 1;
+
+          profileStats.bestDailyPerfectStreak = Math.max(
+            profileStats.bestDailyPerfectStreak || 0,
+            profileStats.currentDailyPerfectStreak
+          );
+
+          saveProfileStats();
+          updatePlayerLeaderboardStats();
         }
 
         if (gameMode === "random") {
-          randomCarryStillAlive = false;
+          randomStats.currentPerfectStreak =
+            (randomStats.currentPerfectStreak || 0) + 1;
+
+          randomStats.bestPerfectStreak = Math.max(
+            randomStats.bestPerfectStreak || 0,
+            randomStats.currentPerfectStreak
+          );
+
+          saveRandomStats();
+        }
+      } else {
+        if (gameMode === "daily") {
+          profileStats.currentDailyPerfectStreak = 0;
+          saveProfileStats();
         }
 
-        currentPerfectStreak = 0;
+        if (gameMode === "random") {
+          randomStats.currentPerfectStreak = 0;
+          saveRandomStats();
+        }
       }
 
       if (
@@ -3981,11 +4005,6 @@ gain.gain.exponentialRampToValueAtTime(
           profileStats.lastDailyStartedSeed === oldSeed &&
           profileStats.lastDailyCompletedSeed !== oldSeed
         ) {
-          profileStats.bestDailyPerfectStreak = Math.max(
-            profileStats.bestDailyPerfectStreak || 0,
-            displayBestStreak()
-          );
-
           profileStats.currentDailyPerfectStreak = 0;
 
           saveProfileStats();
@@ -3999,45 +4018,15 @@ gain.gain.exponentialRampToValueAtTime(
     }
 
     function displayCurrentStreak() {
-      if (gameMode === "daily") {
-        const carried = profileStats.currentDailyPerfectStreak || 0;
-
-        return dailyCarryStillAlive
-          ? carried + currentPerfectStreak
-          : currentPerfectStreak;
-      }
-
-      const carried = randomStats.currentPerfectStreak || 0;
-
-      return randomCarryStillAlive
-        ? carried + currentPerfectStreak
-        : currentPerfectStreak;
+      return gameMode === "daily"
+        ? profileStats.currentDailyPerfectStreak || 0
+        : randomStats.currentPerfectStreak || 0;
     }
 
     function displayBestStreak() {
-      if (gameMode === "daily") {
-        const carried = profileStats.currentDailyPerfectStreak || 0;
-
-        const liveDailyBest = dailyCarryStillAlive
-          ? carried + runBestPerfectStreak
-          : runBestPerfectStreak;
-
-        return Math.max(
-          profileStats.bestDailyPerfectStreak || 0,
-          liveDailyBest
-        );
-      }
-
-      const carried = randomStats.currentPerfectStreak || 0;
-
-      const liveRandomBest = randomCarryStillAlive
-        ? carried + runBestPerfectStreak
-        : runBestPerfectStreak;
-
-      return Math.max(
-        randomStats.bestPerfectStreak || 0,
-        liveRandomBest
-      );
+      return gameMode === "daily"
+        ? profileStats.bestDailyPerfectStreak || 0
+        : randomStats.bestPerfectStreak || 0;
     }
 
     function render() {
@@ -4191,8 +4180,8 @@ gain.gain.exponentialRampToValueAtTime(
         `Moves: ${moves}`,
         `Draw pile: ${drawPile.length}`,
         `Foundation cards: ${completedFoundationCardCount()} / 52`,
-        `Current perfect streak: ${currentPerfectStreak}`,
-        `Best streak this run: ${runBestPerfectStreak}`,
+        `Active streak: ${displayCurrentStreak()}`,
+        `Longest streak: ${displayBestStreak()}`,
         "",
         "Original Deal:",
         originalLayoutText(),
