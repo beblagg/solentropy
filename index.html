@@ -3406,9 +3406,7 @@ function switchGameMode(mode) {
 
       const fromNotation = coordText(selected.r, selected.c);
       const toNotation = coordText(r, c);
-      if (!firstPlacement) {
-        firstPlacement = `${cardNotation(card)}→${toNotation}`;
-      }
+
 
       grid[r][c] = fromCard;
       grid[selected.r][selected.c] = null;
@@ -3449,6 +3447,9 @@ function switchGameMode(mode) {
 
       const fromNotation = coordText(selected.r, selected.c);
       const toNotation = coordText(-1, i);
+      if (!firstPlacement) {
+        firstPlacement = `${cardNotation(card)}→${toNotation}`;
+      }
       const entropy = scoreFoundationMove(card, foundations[i]);
       entropyProfile[entropy] = (entropyProfile[entropy] || 0) + 1;
       foundations[i].push(card);
