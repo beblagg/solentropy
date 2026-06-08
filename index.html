@@ -2933,15 +2933,19 @@ function confirmNewGame() {
           runBestPerfectStreak
         );
 
+        const carriedDailyStreak = profileStats.currentDailyPerfectStreak || 0;
+
         profileStats.currentDailyPerfectStreak =
-        score === 0
-          ? displayCurrentStreak()
-          : currentPerfectStreak;
+          score === 0
+            ? carriedDailyStreak + currentPerfectStreak
+            : currentPerfectStreak;
 
         profileStats.bestDailyPerfectStreak = Math.max(
           profileStats.bestDailyPerfectStreak || 0,
+          profileStats.currentDailyPerfectStreak,
           displayBestStreak()
         );
+
 
         profileStats.lastDailyCompletedSeed = currentDailySeed();
 
@@ -3466,22 +3470,22 @@ function switchGameMode(mode) {
           currentPerfectStreak
         );
 
-        if (gameMode === "daily") {
-          profileStats.bestDailyPerfectStreak = Math.max(
-            profileStats.bestDailyPerfectStreak || 0,
-            displayBestStreak()
-          );
-
-          saveProfileStats();
-        }
-        if (gameMode === "random") {
-          randomStats.bestPerfectStreak = Math.max(
-            randomStats.bestPerfectStreak || 0,
-            displayBestStreak()
-          );
-
-          saveRandomStats();
-        }
+        // if (gameMode === "daily") {
+        //   profileStats.bestDailyPerfectStreak = Math.max(
+        //     profileStats.bestDailyPerfectStreak || 0,
+        //     displayBestStreak()
+        //   );
+        //
+        //   saveProfileStats();
+        // }
+        // if (gameMode === "random") {
+        //   randomStats.bestPerfectStreak = Math.max(
+        //     randomStats.bestPerfectStreak || 0,
+        //     displayBestStreak()
+        //   );
+        //
+        //   saveRandomStats();
+        // }
 
       } else {
         if (gameMode === "daily") {
