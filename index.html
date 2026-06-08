@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.06.1800.
+Prototype version 2026.06.07.2019.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -674,6 +674,67 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     .profile-section-title {
       text-align: center;
+    }
+
+    .leaderboard-table td:nth-child(2) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .daily-leaderboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+
+      margin-bottom: 12px;
+    }
+
+    .daily-leaderboard-header button {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+
+      width: auto;
+      height: auto;
+      min-height: unset;
+
+      padding: 4px;
+
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .daily-leaderboard-header button:disabled {
+      opacity: .35;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .leaderboard-divider {
+      margin: 12px 0;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .daily-summary {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+
+    #displayNameStatus {
+      min-width: 20px;
+      font-size: 18px;
+    }
+
+    .display-name-success {
+      color: #59d36b;
+    }
+
+    .display-name-error {
+      color: #d35f5f;
     }
 
     .message,
@@ -1728,7 +1789,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     <button class="tutorial-x" onclick="closeProfileModal()">✕</button>
 
-    <div class="tutorial-slide-title">Daily Shuffle Stats</div>
+    <div class="tutorial-slide-title">Profile</div>
 
     <div class="tutorial-slide-body">
       <div class="settings-action-row">
@@ -1757,6 +1818,7 @@ Do not copy, distribute, modify, or commercialize without permission.
       <button class="secondary" onclick="saveDisplayNameFromInput()">
         Save Display Name
       </button>
+      <span id="displayNameStatus"></span>
       <div class="mini-stat">
         <span>Best Entropy</span>
         <strong id="modalBestScore">—</strong>
@@ -1898,6 +1960,7 @@ Do not copy, distribute, modify, or commercialize without permission.
     let suppressClickAfterDrag = false;
     let currentPerfectStreak = 0;
     let runBestPerfectStreak = 0;
+    let firstPlacement = null;
     let runCompleted = false;
     let dailyCarryStillAlive = true;
     let profileStats = loadProfileStats();
@@ -1909,8 +1972,13 @@ Do not copy, distribute, modify, or commercialize without permission.
       streaks: [],
       average: []
     };
-
+    let leaderboardDate = currentDailySeed();
     let leaderboardView = "daily";
+    let dailySummary = {
+      played: 0,
+      average: null,
+      median: null
+    };
 
     const SUPABASE_URL = "https://vayhmnprgcbrjnuylxon.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_nu72eTAiDUKvhEPbi7xE1A_jJaW3Y2j";
@@ -1946,10 +2014,31 @@ Do not copy, distribute, modify, or commercialize without permission.
     async function ensurePlayerProfile() {
       if (!currentPlayer) return;
 
+      function generateAnonymousName() {
+        return `Anon-${Math.random()
+          .toString(36)
+          .slice(2, 7)
+          .toUpperCase()}`;
+      }
+
+      const { data: existing, error: fetchError } = await supabaseClient
+        .from("players")
+        .select("id")
+        .eq("id", currentPlayer.id)
+        .maybeSingle();
+
+      if (fetchError) {
+        console.error("Player profile lookup failed:", fetchError);
+        return;
+      }
+
+      if (existing) return;
+
       const { error } = await supabaseClient
         .from("players")
-        .upsert({
-          id: currentPlayer.id
+        .insert({
+          id: currentPlayer.id,
+          display_name: generateAnonymousName()
         });
 
       if (error) {
@@ -1987,16 +2076,43 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     async function saveDisplayNameFromInput() {
       const input = document.getElementById("displayNameInput");
+      const status = document.getElementById("displayNameStatus");
+
       if (!input || !currentPlayer) return;
 
       const displayName = cleanDisplayName(input.value);
 
+      if (status) {
+        status.textContent = "…";
+        status.className = "";
+      }
+
       if (!displayName) {
+        if (status) {
+          status.textContent = "✕";
+          status.className = "display-name-error";
+        }
+
         setMessage("Enter a display name first.");
         return;
       }
 
+      if (displayName.length < 3 || displayName.length > 15) {
+        if (status) {
+          status.textContent = "✕";
+          status.className = "display-name-error";
+        }
+
+        setMessage("Display names must be 3–15 characters.");
+        return;
+      }
+
       if (!isDisplayNameAllowed(displayName)) {
+        if (status) {
+          status.textContent = "✕";
+          status.className = "display-name-error";
+        }
+
         setMessage("Please choose a different display name.");
         return;
       }
@@ -2011,8 +2127,19 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       if (error) {
         console.error("Display name update failed:", error);
+
+        if (status) {
+          status.textContent = "✕";
+          status.className = "display-name-error";
+        }
+
         setMessage("That display name may already be taken.");
         return;
+      }
+
+      if (status) {
+        status.textContent = "✓";
+        status.className = "display-name-success";
       }
 
       setMessage("Display name saved.");
@@ -2034,8 +2161,15 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
 
       const input = document.getElementById("displayNameInput");
+      const status = document.getElementById("displayNameStatus");
+
       if (input) {
         input.value = data?.display_name || "";
+      }
+
+      if (status && data?.display_name) {
+        status.textContent = "✓";
+        status.className = "display-name-success";
       }
     }
 
@@ -2060,7 +2194,7 @@ Do not copy, distribute, modify, or commercialize without permission.
         score,
         moves,
         active_streak: profileStats.currentDailyPerfectStreak || 0,
-        best_streak: profileStats.bestDailyPerfectStreak || 0
+        first_placement: firstPlacement || null
       };
 
       if (!payload.player_id || !payload.daily_seed) {
@@ -2122,21 +2256,22 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
     }
 
-    async function loadDailyLeaderboard() {
+    async function loadDailyLeaderboard(seed = leaderboardDate) {
       const { data, error } = await supabaseClient
         .from("daily_results")
         .select(`
           player_id,
           score,
           moves,
+          first_placement,
           players!daily_results_player_id_players_fkey (
             display_name
           )
         `)
-        .eq("daily_seed", currentDailySeed())
+        .eq("daily_seed", seed)
         .order("score", { ascending: true })
         .order("moves", { ascending: true })
-        .limit(10);
+        .limit(1000);
 
       if (error) {
         console.error("Daily leaderboard load failed:", error);
@@ -2152,7 +2287,7 @@ Do not copy, distribute, modify, or commercialize without permission.
         .select("id, display_name, best_streak")
         .gt("best_streak", 0)
         .order("best_streak", { ascending: false })
-        .limit(10);
+        .limit(1000);
 
       if (error) {
         console.error("Longest streaks leaderboard load failed:", error);
@@ -2208,7 +2343,32 @@ Do not copy, distribute, modify, or commercialize without permission.
           a.average_entropy - b.average_entropy ||
           a.average_moves - b.average_moves
         )
-        .slice(0, 10);
+        .sort((a, b) =>
+          a.average_entropy - b.average_entropy ||
+          a.average_moves - b.average_moves
+        );
+    }
+
+    function leaderboardWithCurrentPlayer(rows, getPlayerId) {
+      const topTen = rows.slice(0, 10);
+
+      const currentIndex = rows.findIndex(
+        row => getPlayerId(row) === currentPlayer?.id
+      );
+
+      const currentRank =
+        currentIndex >= 0 ? currentIndex + 1 : null;
+
+      const alreadyVisible =
+        currentRank && currentRank <= 10;
+
+      return {
+        topTen,
+        currentRank,
+        currentRow:
+          currentIndex >= 0 ? rows[currentIndex] : null,
+        alreadyVisible
+      };
     }
 
     function playerName(row) {
@@ -2248,16 +2408,18 @@ Do not copy, distribute, modify, or commercialize without permission.
     }
 
     async function openLeaderboardModal() {
+      leaderboardDate = currentDailySeed();
       await syncPendingDailyResults();
       const content = document.getElementById("leaderboardContent");
       content.innerHTML = "Loading leaderboards...";
 
       document.getElementById("leaderboardModal").classList.add("open");
 
-      const [daily, streaks, averages] = await Promise.all([
+      const [daily, streaks, averages, summary] = await Promise.all([
         loadDailyLeaderboard(),
         loadLongestStreaksLeaderboard(),
-        loadAverageEntropyLeaderboard()
+        loadAverageEntropyLeaderboard(),
+        loadDailySummary()
       ]);
 
       leaderboardData = {
@@ -2265,6 +2427,8 @@ Do not copy, distribute, modify, or commercialize without permission.
         streaks,
         average: averages
       };
+
+      dailySummary = summary;
 
       setLeaderboardView("daily");
     }
@@ -2289,29 +2453,97 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     function renderLeaderboardView() {
       const content = document.getElementById("leaderboardContent");
+      const dailyBoard = leaderboardWithCurrentPlayer(
+        leaderboardData.daily,
+        row => row.player_id
+      );
 
       if (leaderboardView === "daily") {
+        const board = leaderboardWithCurrentPlayer(
+          leaderboardData.daily,
+          row => row.player_id
+        );
+
         content.innerHTML = `
-          <div class="profile-section-title">
-            📅 Daily Shuffle • ${formattedDailyDate()}
+          <div class="daily-leaderboard-header">
+            <button onclick="changeLeaderboardDate(-1)">
+              ‹
+            </button>
+
+            <span>
+              📅 Daily Shuffle • ${formattedLeaderboardDate()}
+            </span>
+
+            <button
+              onclick="changeLeaderboardDate(1)"
+              ${leaderboardDate === currentDailySeed() ? "disabled" : ""}
+            >
+              ›
+            </button>
+          </div>
+
+          <div class="daily-summary">
+            Played: ${dailySummary.played.toLocaleString()}
+            &nbsp;|&nbsp;
+            Avg: ${
+              dailySummary.average === null
+                ? "—"
+                : dailySummary.average.toFixed(1)
+            }
+            &nbsp;|&nbsp;
+            Median: ${
+              dailySummary.median === null
+                ? "—"
+                : dailySummary.median
+            }
           </div>
 
           ${leaderboardTable(
-            ["User", "Entropy", "Moves"],
-            leaderboardData.daily.map((row, index) =>
+            ["User", "Entropy", "Moves", "First"],
+            board.topTen.map((row, index) =>
               leaderboardRow(index + 1, row.player_id, [
                 playerName(row),
                 row.score,
-                row.moves
+                row.moves,
+                row.first_placement || "—"
               ])
             ),
             "No completed Daily Shuffles yet."
           )}
+
+          ${
+            !board.alreadyVisible && board.currentRow
+              ? `
+                <div class="leaderboard-divider"></div>
+
+                ${leaderboardTable(
+                  ["User", "Entropy", "Moves", "First"],
+                  [
+                    leaderboardRow(
+                      board.currentRank,
+                      board.currentRow.player_id,
+                      [
+                        playerName(board.currentRow),
+                        board.currentRow.score,
+                        board.currentRow.moves,
+                        board.currentRow.first_placement || "—"
+                      ]
+                    )
+                  ]
+                )}
+              `
+              : ""
+          }
         `;
         return;
       }
 
       if (leaderboardView === "streaks") {
+        const board = leaderboardWithCurrentPlayer(
+          leaderboardData.streaks,
+          row => row.id
+        );
+
         content.innerHTML = `
           <div class="profile-section-title">
             Longest Streaks
@@ -2319,7 +2551,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
           ${leaderboardTable(
             ["User", "Streak"],
-            leaderboardData.streaks.map((row, index) =>
+            board.topTen.map((row, index) =>
               leaderboardRow(index + 1, row.id, [
                 playerName(row),
                 row.best_streak
@@ -2327,11 +2559,38 @@ Do not copy, distribute, modify, or commercialize without permission.
             ),
             "No streaks yet."
           )}
+
+          ${
+            !board.alreadyVisible && board.currentRow
+              ? `
+                <div class="leaderboard-divider"></div>
+
+                ${leaderboardTable(
+                  ["User", "Streak"],
+                  [
+                    leaderboardRow(
+                      board.currentRank,
+                      board.currentRow.id,
+                      [
+                        playerName(board.currentRow),
+                        board.currentRow.best_streak
+                      ]
+                    )
+                  ]
+                )}
+              `
+              : ""
+          }
         `;
         return;
       }
 
       if (leaderboardView === "average") {
+        const board = leaderboardWithCurrentPlayer(
+          leaderboardData.average,
+          row => row.id
+        );
+
         content.innerHTML = `
           <div class="profile-section-title">
             Best Average Entropy
@@ -2339,7 +2598,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
           ${leaderboardTable(
             ["User", "Avg Entropy", "Avg Moves"],
-            leaderboardData.average.map((row, index) =>
+            board.topTen.map((row, index) =>
               leaderboardRow(index + 1, row.id, [
                 playerName(row),
                 row.average_entropy.toFixed(1),
@@ -2348,6 +2607,29 @@ Do not copy, distribute, modify, or commercialize without permission.
             ),
             "Complete 10 Daily Shuffles to qualify."
           )}
+
+          ${
+            !board.alreadyVisible && board.currentRow
+              ? `
+                <div class="leaderboard-divider"></div>
+
+                ${leaderboardTable(
+                  ["User", "Avg Entropy", "Avg Moves"],
+                  [
+                    leaderboardRow(
+                      board.currentRank,
+                      board.currentRow.id,
+                      [
+                        playerName(board.currentRow),
+                        board.currentRow.average_entropy.toFixed(1),
+                        board.currentRow.average_moves.toFixed(1)
+                      ]
+                    )
+                  ]
+                )}
+              `
+              : ""
+          }
         `;
       }
     }
@@ -2361,6 +2643,89 @@ Do not copy, distribute, modify, or commercialize without permission.
         year: "numeric"
       });
     }
+
+    function formattedLeaderboardDate() {
+      const [year, month, day] =
+        leaderboardDate.split("-").map(Number);
+
+      return new Date(year, month - 1, day)
+        .toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        });
+    }
+
+    function changeLeaderboardDate(days) {
+      const [year, month, day] =
+        leaderboardDate.split("-").map(Number);
+
+      const date = new Date(year, month - 1, day);
+
+      date.setDate(date.getDate() + days);
+
+      leaderboardDate = date.toISOString().slice(0, 10);
+
+      loadLeaderboardDate();
+    }
+
+    async function loadLeaderboardDate() {
+      leaderboardData.daily =
+        await loadDailyLeaderboard(leaderboardDate);
+
+      dailySummary =
+        await loadDailySummary(leaderboardDate);
+
+      renderLeaderboardView();
+    }
+
+
+      async function loadDailySummary(seed = leaderboardDate) {
+        const { data, error } = await supabaseClient
+          .from("daily_results")
+          .select("score")
+          .eq("daily_seed", seed);
+
+        if (error) {
+          console.error("Daily summary load failed:", error);
+          return {
+            played: 0,
+            average: null,
+            median: null
+          };
+        }
+
+        const scores = data.map(row => row.score);
+
+        if (!scores.length) {
+          return {
+            played: 0,
+            average: null,
+            median: null
+          };
+        }
+
+        scores.sort((a, b) => a - b);
+
+        const played = scores.length;
+
+        const average =
+          scores.reduce((sum, score) => sum + score, 0) / played;
+
+        const median =
+          played % 2
+            ? scores[Math.floor(played / 2)]
+            : (
+                scores[played / 2 - 1] +
+                scores[played / 2]
+              ) / 2;
+
+        return {
+          played,
+          average,
+          median
+        };
+      }
 
     function closeLeaderboardModal() {
       document.getElementById("leaderboardModal").classList.remove("open");
@@ -2587,7 +2952,7 @@ function confirmNewGame() {
           score,
           moves,
           active_streak: profileStats.currentDailyPerfectStreak || 0,
-          best_streak: profileStats.bestDailyPerfectStreak || 0
+          first_placement: firstPlacement || null
         };
 
         if (completedDailyResult.player_id) {
@@ -2673,6 +3038,7 @@ function confirmNewGame() {
       score = 0;
       moves = 0;
       history = [];
+      firstPlacement = null;
       entropyProfile = {};
       undoSnapshot = null;
       undoAvailable = false;
@@ -2785,7 +3151,7 @@ function switchGameMode(mode) {
 }
 
     function snapshot() {
-      return JSON.stringify({ drawPile, grid, foundations, selected, score, moves, logEntries, originalLayout, originalShuffle, currentPerfectStreak, runBestPerfectStreak, runCompleted, usedUnlimitedUndoThisRun, entropyProfile, dailyCarryStillAlive,randomCarryStillAlive });
+      return JSON.stringify({ drawPile, grid, foundations, selected, score, moves, logEntries, originalLayout, originalShuffle, currentPerfectStreak, runBestPerfectStreak, runCompleted, usedUnlimitedUndoThisRun, entropyProfile, dailyCarryStillAlive,randomCarryStillAlive,firstPlacement });
     }
 
     function restore(state) {
@@ -2801,6 +3167,7 @@ function switchGameMode(mode) {
       originalShuffle = s.originalShuffle || [];
       currentPerfectStreak = s.currentPerfectStreak || 0;
       runBestPerfectStreak = s.runBestPerfectStreak || 0;
+      firstPlacement = s.firstPlacement || null;
       runCompleted = s.runCompleted || false;
       usedUnlimitedUndoThisRun = s.usedUnlimitedUndoThisRun ?? false;
       dailyCarryStillAlive = s.dailyCarryStillAlive ?? true;
@@ -3039,6 +3406,9 @@ function switchGameMode(mode) {
 
       const fromNotation = coordText(selected.r, selected.c);
       const toNotation = coordText(r, c);
+      if (!firstPlacement) {
+        firstPlacement = `${cardNotation(card)}→${toNotation}`;
+      }
 
       grid[r][c] = fromCard;
       grid[selected.r][selected.c] = null;
@@ -3812,7 +4182,7 @@ gain.gain.exponentialRampToValueAtTime(
         `SolEntropy | ${gameModeLabel()}`,
         `Entropy: ${score}`,
         "",
-        `Entropy Accumulation: ${entropyProfileText()}`,
+        `Entropy Path: ${entropyProfileText()}`,
         `Moves: ${moves}`,
         `Draw pile: ${drawPile.length}`,
         `Foundation cards: ${completedFoundationCardCount()} / 52`,
@@ -3854,7 +4224,7 @@ gain.gain.exponentialRampToValueAtTime(
         `SolEntropy | ${gameModeLabel()}`,
         `Entropy: ${score}`,
         "",
-        `Entropy Accumulation: ${entropyProfileText()}`,
+        `Entropy Path: ${entropyProfileText()}`,
         `Foundation Cards: ${completedFoundationCardCount()} / 52`,
         "",
         "Board State:",
@@ -3878,13 +4248,13 @@ gain.gain.exponentialRampToValueAtTime(
 
       return [
         `SolEntropy | ${gameModeLabel()}`,
-        `Entropy: ${score}`,
+        `Final Entropy: ${score}`,
         "",
-        `Entropy Accumulation: ${entropyProfileText()}`,
-        `Foundation Cards: ${completedFoundationCardCount()} / 52`,
-        `Foundations: ${foundationTops}`,
+        `Entropy Path: ${entropyProfileText()}`,
+        // `Foundation Cards: ${completedFoundationCardCount()} / 52`,
+        // `Foundations: ${foundationTops}`,
         `Moves: ${moves}`,
-        `Active Streak: ${displayCurrentStreak()}`,
+        `First: ${firstPlacement || "—"}`,
         ...(gameMode === "daily" ? [] : [`Undo: ${runUndoModeText()}`]),
         'beblagg.com/entropy'
       ].join("\n");
@@ -4243,7 +4613,7 @@ function closeCompletionModal() {
         Cards may only move into empty grid spaces or reachable foundation slots.<br><br>
 
         <div class="tutorial-example">
-          ♟ Pawns move forward-only +1, can move into foundations forward or diagonally.<br>
+          ♟ Pawns move forward only; can move into foundations forward or diagonally.<br>
           ♝ Bishops move diagonally only.<br>
           ♞ Knights jump in an L-shape (e.g.↑2→1).<br>
           ♜ Rooks move in straight lines.<br>
@@ -4252,7 +4622,7 @@ function closeCompletionModal() {
 
         <br>
 
-        Sliding pieces cannot move through occupied cards.
+        Sliding pieces cannot move through occupied spaces.
       `
       },
 
@@ -4274,12 +4644,30 @@ function closeCompletionModal() {
       },
 
       {
+        title: "Leaderboards",
+        body:
+        `
+        View the leaderboards by tapping the 🥇 button at the top of the page.<br><br>
+
+        <b>Daily 📅</b><br>
+        Lowest entropy wins. Ties are broken by fewer moves.<br>
+        Use the ‹› arrows to browse results from previous Daily Shuffles.<br><br>
+
+        <b>Streaks 🔥</b><br>
+        Tracks the longest Daily Shuffle streaks (consecutive perfect placements) ever achieved.<br><br>
+
+        <b>Average 📉</b><br>
+        Ranks players by average entropy across completed Daily Shuffles. A minimum of 10 completed Daily Shuffles is required to qualify.
+        `
+      },
+
+      {
         title: "Strategy",
         body:
         `
         Manage your grid carefully.<br>
         Advance cards from the back row strategically.<br>
-        Beware the endgame.<br><br>
+        Plan ahead.<br><br>
       `
       }
     ];
