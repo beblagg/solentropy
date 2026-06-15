@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.07.2019.
+Prototype version 2026.06.14.2237.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -65,7 +65,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     .topbar {
       max-width: 1080px;
-      margin: 0 auto 20px;
+      margin: 0 auto 10px;
       position: relative;
     }
 
@@ -84,9 +84,8 @@ Do not copy, distribute, modify, or commercialize without permission.
       font-weight: 900;
       letter-spacing: -0.04em;
       line-height: 1;
-      flex-shrink: 0;
       opacity: .95;
-      margin-left: -0px;
+      justify-self: start;
     }
 
     .logo .sol {
@@ -468,15 +467,16 @@ Do not copy, distribute, modify, or commercialize without permission.
 
 
     .title-row {
-      position: relative;
-      display: flex;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
+      gap: 10px;
     }
 
     .mode-switch {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
+      position: static;
+      transform: none;
+      justify-self: center;
 
       display: flex;
       gap: 4px;
@@ -609,6 +609,12 @@ Do not copy, distribute, modify, or commercialize without permission.
       margin-top: 8px;
       margin-bottom: 18px;
       font-size: 13px;
+    }
+
+    .leaderboard-gap td {
+      height: 16px;
+      padding: 0 !important;
+      border-bottom: 1px solid rgba(255,255,255,.12) !important;
     }
 
     .leaderboard-table th,
@@ -789,6 +795,10 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     .danger-button {
       width: auto;
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     .mini-stat {
@@ -1168,8 +1178,8 @@ Do not copy, distribute, modify, or commercialize without permission.
     }
 
     .footer {
-      margin-top: 20px;
-      padding-bottom: 12px;
+      margin-top: 10px;
+      padding-bottom: 10px;
 
       text-align: center;
 
@@ -1222,7 +1232,7 @@ Do not copy, distribute, modify, or commercialize without permission.
       border-radius: 999px;
       padding: 0;
 
-      font-size: 15px;
+      font-size: 20px;
       font-weight: 800;
       line-height: 1;
 
@@ -1233,13 +1243,48 @@ Do not copy, distribute, modify, or commercialize without permission.
       justify-content: center;
     }
 
+    .feature-menu-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      min-height: unset;
+      height: 36px;
+      padding: 0 12px;
+      gap: 5px;
+
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: none;
+      backdrop-filter: blur(6px);
+
+      color: white;
+      font-size: 14px;
+      line-height: 1;
+      opacity: .9;
+
+    }
+
+    .feature-menu-button span {
+      display: flex;
+      align-items: center;
+    }
+
+    .feature-menu-button:hover {
+      transform: none;
+    }
+    .feature-menu-button.active {
+      opacity: 1;
+    }
+
     @media (max-width: 900px) {
       .topbar {
         position: relative;
       }
 
     .title-row {
-    gap: 10px;
+    gap: 8px;
   }
 
   .mode-switch button {
@@ -1247,13 +1292,56 @@ Do not copy, distribute, modify, or commercialize without permission.
     font-size: 12px;
   }
 
-      .mobile-top-actions {
-        display: flex;
+        .mobile-top-actions {
+          display: flex;
+          position: relative;
+          top: auto;
+          right: auto;
+          justify-self: end;
+          gap: 6px;
+        }
+
+      .mobile-menu {
         position: absolute;
-        top: 2px;
-        right: 2px;
-        gap: 6px;
+        top: 34px;
+        right: 0;
+
+        display: none;
+        min-width: 172px;
+        padding: 6px;
+
+        border-radius: 14px;
+        background: rgba(20,24,28,.96);
+        border: 1px solid rgba(255,255,255,.14);
+        box-shadow: 0 14px 34px rgba(0,0,0,.36);
+
+        z-index: 8000;
       }
+
+      .mobile-menu.open {
+        display: grid;
+        gap: 4px;
+      }
+
+      .mobile-menu button {
+        width: 100%;
+        min-height: unset;
+        padding: 9px 10px;
+
+        border-radius: 10px;
+        background: transparent;
+        color: white;
+        box-shadow: none;
+
+        text-align: left;
+        font-size: 13px;
+      }
+
+      .mobile-menu button:hover {
+        background: rgba(255,255,255,.08);
+        transform: none;
+      }
+
     }
 
     .tutorial-modal {
@@ -1293,6 +1381,10 @@ Do not copy, distribute, modify, or commercialize without permission.
       box-shadow:
         0 24px 60px rgba(0,0,0,.55),
         inset 0 1px 0 rgba(255,255,255,.06);
+
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
 
     .tutorial-x {
@@ -1433,7 +1525,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       .mobile-hud {
         display: block;
-        margin-top: 14px;
+        margin-top: 8px;
         background: rgba(20,24,28,.72);
         border: 1px solid rgba(255,255,255,.11);
         border-radius: 18px;
@@ -1569,45 +1661,36 @@ Do not copy, distribute, modify, or commercialize without permission.
       </button>
     </div>
 
+    <div class="mobile-top-actions">
+      <button class="feature-menu-button" onclick="toggleMobileMenu()">
+        <span>🥇</span>
+        <span>👤</span>
+        <span>❓</span>
+      </button>
+
+      <div id="mobileMenu" class="mobile-menu">
+        <button onclick="closeMobileMenu(); openLeaderboardModal();">
+          🥇 Leaderboards
+        </button>
+
+        <button onclick="closeMobileMenu(); openProfileModal();">
+          👤 Profile
+        </button>
+
+        <button onclick="closeMobileMenu(); openTutorial();">
+          ❓ How to Play
+        </button>
+
+        <button onclick="closeMobileMenu(); openSettingsModal();">
+          ⚙️ Settings
+        </button>
+      </div>
+    </div>
+
   </div>
 
-    <div class="mobile-top-actions">
-
-  <button
-    class="icon-button"
-    onclick="openTutorial()"
-    aria-label="Info"
-  >
-    ?
-  </button>
-
-  <button
-    class="icon-button"
-    onclick="openSettingsModal()"
-    aria-label="Settings"
-  >
-    ⛭
-  </button>
-
-  <button
-    class="icon-button"
-    onclick="openProfileModal()"
-    aria-label="Profile"
-  >
-    👤
-  </button>
-
-  <button
-  class="icon-button"
-  onclick="openLeaderboardModal()"
-  aria-label="Leaderboard"
->
-  🥇
-</button>
-
-</div>
     <p class="tagline">
-      A solo abstract strategy game. Move cards through the 4x4 grid using chess piece-like movements to sort cards into the four foundation stacks. Minimize Entropy by building as close to perfectly-ascending stacks as you can.
+      A solo strategy card game. Move cards through the 4x4 grid using chess piece-like movements to sort cards into the four foundation stacks. Minimize Entropy by building as close to perfectly-ascending stacks as you can.
     </p>
     <div class="mobile-hud">
       <div class="hud-row">
@@ -1629,17 +1712,17 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       <div class="hud-row">
         <div>
-          <span>Streak</span>
+          <span>+0 Streak</span>
           <strong id="mobileStreak">0</strong>
         </div>
 
         <div>
-          <span>Longest</span>
+          <span>Longest Streak</span>
           <strong id="mobileBestStreak">0</strong>
         </div>
 
         <div>
-          <span>Draw</span>
+          <span>Draw Pile</span>
           <strong id="mobileDrawPile">0</strong>
         </div>
       </div>
@@ -1656,7 +1739,7 @@ Do not copy, distribute, modify, or commercialize without permission.
 
 <div class="layout">
     <div class="board-wrap">
-      <div class="section-label">Foundations</div>
+      <div id="boardModeLabel" class="section-label">📅 DAILY SHUFFLE</div>
       <div id="foundations" class="foundations"></div>
       <!--<div class="section-label">Grid</div>-->
       <div id="grid" class="grid"></div>
@@ -1677,9 +1760,9 @@ Do not copy, distribute, modify, or commercialize without permission.
       <div class="stat"><strong>Entropy</strong><span id="score">0</span></div>
       <div class="stat"><strong>Foundation</strong><span id="foundationCards">0 / 52</span></div>
       <div class="stat"><strong>Moves</strong><span id="moves">0</span></div>
-      <div class="stat"><strong id="currentStreakLabel">Streak</strong><span id="currentStreak">0</span></div>
-      <div class="stat"><strong id="bestStreakLabel">Longest</strong><span id="runBestStreak">0</span></div>
-      <div class="stat"><strong>Draw</strong><span id="drawCount">0</span></div>
+      <div class="stat"><strong id="currentStreakLabel">+0 Streak</strong><span id="currentStreak">0</span></div>
+      <div class="stat"><strong id="bestStreakLabel">Longest Streak</strong><span id="runBestStreak">0</span></div>
+      <div class="stat"><strong>Draw Pile</strong><span id="drawCount">0</span></div>
     </div>
 
       <!--<div class="analytics-card profile-card">
@@ -1886,13 +1969,13 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     <div class="tutorial-slide-body">
       <strong>SolEntropy</strong><br>
-      A solo abstract strategy card game by Brandon Blagg.<br><br>
+      A solo strategy card game by Brandon Blagg.<br><br>
 
       <strong>Contact</strong><br>
       Contact: brandon@beblagg.com<br><br>
 
       <strong>Privacy</strong><br>
-      SolEntropy stores game progress and profile stats locally in your browser. Analytics may be used to understand site traffic and improve the game.<br><br>
+      SolEntropy stores game progress locally in your browser and syncs leaderboard/profile information with our servers. Analytics may be used to understand site traffic and improve the game.<br><br>
 
       <strong>Version</strong><br>
       v2026.06
@@ -1916,12 +1999,16 @@ Do not copy, distribute, modify, or commercialize without permission.
         Close
       </button>
 
-      <button onclick="copyResults()">
+      <button
+        id="completionCopyButton"
+        onclick="copyResults()"
+      >
         Copy Results
       </button>
     </div>
 
     <button
+      id="completionNewGameButton"
       class="tutorial-close new-game-btn"
       onclick="confirmNewGame()"
     >
@@ -2178,6 +2265,34 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
     }
 
+    async function currentDisplayName() {
+      if (!currentPlayer) return null;
+
+      const { data, error } = await supabaseClient
+        .from("players")
+        .select("display_name")
+        .eq("id", currentPlayer.id)
+        .single();
+
+      if (error) return null;
+
+      return data?.display_name || null;
+    }
+
+    async function saveCompletionDisplayName() {
+      const input = document.getElementById("completionDisplayNameInput");
+      if (!input) return;
+
+      const profileInput = document.getElementById("displayNameInput");
+      if (profileInput) {
+        profileInput.value = input.value;
+      }
+
+      await saveDisplayNameFromInput();
+
+      openCompletionModal();
+    }
+
     async function syncPendingDailyResults() {
       if (!currentPlayer) return;
 
@@ -2380,19 +2495,26 @@ Do not copy, distribute, modify, or commercialize without permission.
       return row.players?.display_name || row.display_name || "Anonymous";
     }
 
-    function leaderboardTable(headers, rows, emptyText = "No results yet.") {
+    function leaderboardTable(
+      headers,
+      rows,
+      emptyText = "No results yet.",
+      showHeaders = true
+    ) {
       if (!rows.length) {
         return `<div class="fine-print">${emptyText}</div>`;
       }
 
       return `
         <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              ${headers.map(h => `<th>${h}</th>`).join("")}
-            </tr>
-          </thead>
+          ${showHeaders ? `
+            <thead>
+              <tr>
+                <th>#</th>
+                ${headers.map(h => `<th>${h}</th>`).join("")}
+              </tr>
+            </thead>
+          ` : ""}
           <tbody>
             ${rows.join("")}
           </tbody>
@@ -2458,10 +2580,6 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     function renderLeaderboardView() {
       const content = document.getElementById("leaderboardContent");
-      const dailyBoard = leaderboardWithCurrentPlayer(
-        leaderboardData.daily,
-        row => row.player_id
-      );
 
       if (leaderboardView === "daily") {
         const board = leaderboardWithCurrentPlayer(
@@ -2469,11 +2587,39 @@ Do not copy, distribute, modify, or commercialize without permission.
           row => row.player_id
         );
 
+        const rows = board.topTen.map((row, index) =>
+          leaderboardRow(index + 1, row.player_id, [
+            playerName(row),
+            row.score,
+            row.moves,
+            row.first_placement || "—"
+          ])
+        );
+
+        if (!board.alreadyVisible && board.currentRow) {
+          rows.push(`
+            <tr class="leaderboard-gap">
+              <td colspan="5"></td>
+            </tr>
+          `);
+
+          rows.push(
+            leaderboardRow(
+              board.currentRank,
+              board.currentRow.player_id,
+              [
+                playerName(board.currentRow),
+                board.currentRow.score,
+                board.currentRow.moves,
+                board.currentRow.first_placement || "—"
+              ]
+            )
+          );
+        }
+
         content.innerHTML = `
           <div class="daily-leaderboard-header">
-            <button onclick="changeLeaderboardDate(-1)">
-              ‹
-            </button>
+            <button onclick="changeLeaderboardDate(-1)">‹</button>
 
             <span>
               📅 Daily Shuffle • ${formattedLeaderboardDate()}
@@ -2505,40 +2651,9 @@ Do not copy, distribute, modify, or commercialize without permission.
 
           ${leaderboardTable(
             ["User", "Entropy", "Moves", "First"],
-            board.topTen.map((row, index) =>
-              leaderboardRow(index + 1, row.player_id, [
-                playerName(row),
-                row.score,
-                row.moves,
-                row.first_placement || "—"
-              ])
-            ),
+            rows,
             "No completed Daily Shuffles yet."
           )}
-
-          ${
-            !board.alreadyVisible && board.currentRow
-              ? `
-                <div class="leaderboard-divider"></div>
-
-                ${leaderboardTable(
-                  ["User", "Entropy", "Moves", "First"],
-                  [
-                    leaderboardRow(
-                      board.currentRank,
-                      board.currentRow.player_id,
-                      [
-                        playerName(board.currentRow),
-                        board.currentRow.score,
-                        board.currentRow.moves,
-                        board.currentRow.first_placement || "—"
-                      ]
-                    )
-                  ]
-                )}
-              `
-              : ""
-          }
         `;
         return;
       }
@@ -2549,43 +2664,42 @@ Do not copy, distribute, modify, or commercialize without permission.
           row => row.id
         );
 
+        const rows = board.topTen.map((row, index) =>
+          leaderboardRow(index + 1, row.id, [
+            playerName(row),
+            row.best_streak
+          ])
+        );
+
+        if (!board.alreadyVisible && board.currentRow) {
+          rows.push(`
+            <tr class="leaderboard-gap">
+              <td colspan="3"></td>
+            </tr>
+          `);
+
+          rows.push(
+            leaderboardRow(
+              board.currentRank,
+              board.currentRow.id,
+              [
+                playerName(board.currentRow),
+                board.currentRow.best_streak
+              ]
+            )
+          );
+        }
+
         content.innerHTML = `
           <div class="profile-section-title">
-            Longest Streaks
+            Longest +0 Streak
           </div>
 
           ${leaderboardTable(
             ["User", "Streak"],
-            board.topTen.map((row, index) =>
-              leaderboardRow(index + 1, row.id, [
-                playerName(row),
-                row.best_streak
-              ])
-            ),
+            rows,
             "No streaks yet."
           )}
-
-          ${
-            !board.alreadyVisible && board.currentRow
-              ? `
-                <div class="leaderboard-divider"></div>
-
-                ${leaderboardTable(
-                  ["User", "Streak"],
-                  [
-                    leaderboardRow(
-                      board.currentRank,
-                      board.currentRow.id,
-                      [
-                        playerName(board.currentRow),
-                        board.currentRow.best_streak
-                      ]
-                    )
-                  ]
-                )}
-              `
-              : ""
-          }
         `;
         return;
       }
@@ -2596,6 +2710,34 @@ Do not copy, distribute, modify, or commercialize without permission.
           row => row.id
         );
 
+        const rows = board.topTen.map((row, index) =>
+          leaderboardRow(index + 1, row.id, [
+            playerName(row),
+            row.average_entropy.toFixed(1),
+            row.average_moves.toFixed(1)
+          ])
+        );
+
+        if (!board.alreadyVisible && board.currentRow) {
+          rows.push(`
+            <tr class="leaderboard-gap">
+              <td colspan="4"></td>
+            </tr>
+          `);
+
+          rows.push(
+            leaderboardRow(
+              board.currentRank,
+              board.currentRow.id,
+              [
+                playerName(board.currentRow),
+                board.currentRow.average_entropy.toFixed(1),
+                board.currentRow.average_moves.toFixed(1)
+              ]
+            )
+          );
+        }
+
         content.innerHTML = `
           <div class="profile-section-title">
             Best Average Entropy
@@ -2603,38 +2745,9 @@ Do not copy, distribute, modify, or commercialize without permission.
 
           ${leaderboardTable(
             ["User", "Avg Entropy", "Avg Moves"],
-            board.topTen.map((row, index) =>
-              leaderboardRow(index + 1, row.id, [
-                playerName(row),
-                row.average_entropy.toFixed(1),
-                row.average_moves.toFixed(1)
-              ])
-            ),
+            rows,
             "Complete 10 Daily Shuffles to qualify."
           )}
-
-          ${
-            !board.alreadyVisible && board.currentRow
-              ? `
-                <div class="leaderboard-divider"></div>
-
-                ${leaderboardTable(
-                  ["User", "Avg Entropy", "Avg Moves"],
-                  [
-                    leaderboardRow(
-                      board.currentRank,
-                      board.currentRow.id,
-                      [
-                        playerName(board.currentRow),
-                        board.currentRow.average_entropy.toFixed(1),
-                        board.currentRow.average_moves.toFixed(1)
-                      ]
-                    )
-                  ]
-                )}
-              `
-              : ""
-          }
         `;
       }
     }
@@ -2878,6 +2991,7 @@ function confirmNewGame() {
 
   // Skip confirmation for untouched fresh boards
   if (!hasProgress) {
+    closeCompletionModal();
     newGame();
     return;
   }
@@ -2896,6 +3010,7 @@ function confirmNewGame() {
       randomStats.runStarted = false;
       saveRandomStats();
     }
+    closeCompletionModal();
     newGame();
   }
 }
@@ -3813,6 +3928,7 @@ gain.gain.exponentialRampToValueAtTime(
       // Prevent mobile page scrolling only when the gesture begins on a card.
       event.preventDefault();
       event.stopPropagation();
+      cleanupDrag();
 
       const cardEl = event.currentTarget;
       const r = Number(cardEl.dataset.row);
@@ -3846,6 +3962,9 @@ gain.gain.exponentialRampToValueAtTime(
       document.body.classList.add("is-dragging-card");
       window.addEventListener("pointermove", onDragMove, { passive: false });
       window.addEventListener("pointerup", onDragEnd, { once: true });
+      window.addEventListener("pointercancel", cancelDrag, { once: true });
+      window.addEventListener("blur", cancelDrag, { once: true });
+      window.addEventListener("scroll", cancelDrag, { once: true, capture: true });
 
       renderLegalOnly();
     }
@@ -3919,6 +4038,11 @@ gain.gain.exponentialRampToValueAtTime(
       setTimeout(() => suppressClickAfterDrag = false, 0);
     }
 
+    function cancelDrag() {
+      cleanupDrag();
+      render();
+    }
+
     function handleDrop(dropTarget) {
       if (!dropTarget || !selected) return false;
 
@@ -3976,16 +4100,28 @@ gain.gain.exponentialRampToValueAtTime(
     }
 
     function cleanupDrag() {
-      document.querySelectorAll(".drag-origin").forEach(el => el.classList.remove("drag-origin"));
-      if (dragHover) dragHover.classList.remove("drop-hover");
+      document
+        .querySelectorAll(".drag-origin")
+        .forEach(el => el.classList.remove("drag-origin"));
+
+      document
+        .querySelectorAll(".drop-hover")
+        .forEach(el => el.classList.remove("drop-hover"));
+
       dragHover = null;
 
-      if (dragGhost) {
-        dragGhost.remove();
-        dragGhost = null;
-      }
+      document
+        .querySelectorAll(".card.dragging")
+        .forEach(el => el.remove());
+
+      dragGhost = null;
 
       window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragEnd);
+      window.removeEventListener("pointercancel", cancelDrag);
+      window.removeEventListener("blur", cancelDrag);
+      window.removeEventListener("scroll", cancelDrag, true);
+
       document.body.classList.remove("is-dragging-card");
       dragging = null;
     }
@@ -4033,6 +4169,14 @@ gain.gain.exponentialRampToValueAtTime(
       checkDailyReset();
       const gridEl = document.getElementById("grid");
       const fEl = document.getElementById("foundations");
+      const boardModeLabel = document.getElementById("boardModeLabel");
+
+        if (boardModeLabel) {
+          boardModeLabel.textContent =
+            gameMode === "daily"
+              ? `📅 DAILY SHUFFLE • ${formattedDailyDate()}`
+              : "🎲 RANDOM SHUFFLE";
+        }
       const legalTargets = legalTargetsForSelected();
 
       fEl.innerHTML = foundations.map((stack, i) => {
@@ -4089,10 +4233,10 @@ gain.gain.exponentialRampToValueAtTime(
       document.getElementById("runBestStreak").textContent = displayBestStreak();
       document.getElementById("foundationCards").textContent = `${completedFoundationCardCount()} / 52`;
       document.getElementById("currentStreakLabel").textContent =
-        gameMode === "daily" ? "Streak" : "Streak";
+        gameMode === "daily" ? "+0 Streak" : "+0 Streak";
 
       document.getElementById("bestStreakLabel").textContent =
-        gameMode === "daily" ? "Longest" : "Longest";
+        gameMode === "daily" ? "Longest Streak" : "Longest Streak";
 
       const avg = averageEntropy();
 
@@ -4228,7 +4372,7 @@ gain.gain.exponentialRampToValueAtTime(
         `Moves: ${moves}`,
         `Active Streak: ${displayCurrentStreak()}`,
         ...(gameMode === "daily" ? [] : [`Undo: ${runUndoModeText()}`]),
-        'beblagg.com/entropy'
+        'beblagg.com/solentropy'
       ].join("\n");
     }
 
@@ -4250,7 +4394,7 @@ gain.gain.exponentialRampToValueAtTime(
         `Moves: ${moves}`,
         `First: ${firstPlacement || "—"}`,
         ...(gameMode === "daily" ? [] : [`Undo: ${runUndoModeText()}`]),
-        'beblagg.com/entropy'
+        'beblagg.com/solentropy'
       ].join("\n");
     }
 
@@ -4304,19 +4448,19 @@ gain.gain.exponentialRampToValueAtTime(
     }
 
     function buildProfileStatsText() {
-  const avg = averageEntropy();
+      const avg = averageEntropy();
 
-  return [
-    "Entropy Daily Shuffle Stats",
-    `Best Entropy: ${profileStats.bestScore === null ? "—" : profileStats.bestScore}`,
-    `Average Entropy: ${avg === null ? "—" : avg.toFixed(1)}`,
-    `Days Completed: ${profileStats.completedRuns}`,
-    `Longest Streak: ${profileStats.bestDailyPerfectStreak || 0}`,
-    "",
-    "Daily Shuffle Results",
-    dailyEntropyHistogramText()
-  ].join("\n");
-}
+      return [
+        "Entropy Daily Shuffle Stats",
+        `Best Entropy: ${profileStats.bestScore === null ? "—" : profileStats.bestScore}`,
+        `Average Entropy: ${avg === null ? "—" : avg.toFixed(1)}`,
+        `Days Completed: ${profileStats.completedRuns}`,
+        `Longest Streak: ${profileStats.bestDailyPerfectStreak || 0}`,
+        "",
+        "Daily Shuffle Results",
+        dailyEntropyHistogramText()
+      ].join("\n");
+    }
 
 function dailyEntropyBuckets() {
   const buckets = Array(11).fill(0);
@@ -4415,6 +4559,19 @@ async function copyProfileStats() {
       document.getElementById("tutorialModal").classList.remove("open");
     }
 
+
+    function toggleMobileMenu() {
+      document
+        .getElementById("mobileMenu")
+        ?.classList.toggle("open");
+    }
+
+    function closeMobileMenu() {
+      document
+        .getElementById("mobileMenu")
+        ?.classList.remove("open");
+    }
+
     function openProfileModal() {
       const avg = averageEntropy();
 
@@ -4441,65 +4598,144 @@ async function copyProfileStats() {
       document.getElementById("profileModal").classList.remove("open");
     }
 
-    function openCompletionModal() {
-      const avg = averageEntropy();
+    async function openCompletionModal() {
+      document
+        .getElementById("completionCopyButton")
+        ?.classList.toggle("hidden", gameMode === "daily");
 
-      const activeStreak =
+      document
+        .getElementById("completionNewGameButton")
+        ?.classList.toggle("hidden", gameMode === "daily");
+
+      const title = document.querySelector(
+        "#completionModal .tutorial-slide-title"
+      );
+
+      title.textContent =
         gameMode === "daily"
-          ? profileStats.currentDailyPerfectStreak || 0
-          : randomStats.currentPerfectStreak || 0;
+          ? "Daily Complete"
+          : "Run Complete";
 
-      const longestStreak =
-        gameMode === "daily"
-          ? profileStats.bestDailyPerfectStreak || 0
-          : randomStats.bestPerfectStreak || 0;
+      const statsEl = document.getElementById("completionStats");
 
-      const modeIcon = gameMode === "daily" ? "📅" : "🎲";
+      if (gameMode === "daily") {
+        statsEl.innerHTML = `
+          <div class="fine-print">Loading today’s leaderboard...</div>
+        `;
 
-      const modeSpecificStats =
-        gameMode === "daily"
-          ? `
-            <div class="mini-stat">
-              <span>Active Streak (${modeIcon})</span>
-              <strong>${activeStreak}</strong>
-            </div>
+        document
+          .getElementById("completionModal")
+          .classList.add("open");
 
-            <div class="mini-stat">
-              <span>Longest Streak (${modeIcon})</span>
-              <strong>${longestStreak}</strong>
-            </div>
+        await syncPendingDailyResults();
 
-            <div class="mini-stat">
-              <span>Profile Best Entropy</span>
-              <strong>${
-                profileStats.bestScore === null
-                  ? "—"
-                  : profileStats.bestScore
-              }</strong>
-            </div>
+        const [daily, summary] = await Promise.all([
+          loadDailyLeaderboard(currentDailySeed()),
+          loadDailySummary(currentDailySeed())
+        ]);
 
-            <div class="mini-stat">
-              <span>Average Entropy</span>
-              <strong>${
-                avg === null
-                  ? "—"
-                  : avg.toFixed(1)
-              }</strong>
-            </div>
-          `
-          : `
-            <div class="mini-stat">
-              <span>Active Streak (${modeIcon})</span>
-              <strong>${activeStreak}</strong>
-            </div>
+        const board = leaderboardWithCurrentPlayer(
+          daily,
+          row => row.player_id
+        );
 
-            <div class="mini-stat">
-              <span>Longest Streak (${modeIcon})</span>
-              <strong>${longestStreak}</strong>
-            </div>
-          `;
+        const rows = board.topTen.map((row, index) =>
+          leaderboardRow(index + 1, row.player_id, [
+            playerName(row),
+            row.score,
+            row.moves,
+            row.first_placement || "—"
+          ])
+        );
 
-      document.getElementById("completionStats").innerHTML = `
+        if (!board.alreadyVisible && board.currentRow) {
+          rows.push(`
+            <tr class="leaderboard-gap">
+              <td colspan="5"></td>
+            </tr>
+          `);
+
+          rows.push(
+            leaderboardRow(
+              board.currentRank,
+              board.currentRow.player_id,
+              [
+                playerName(board.currentRow),
+                board.currentRow.score,
+                board.currentRow.moves,
+                board.currentRow.first_placement || "—"
+              ]
+            )
+          );
+        }
+
+        const name = await currentDisplayName();
+        const needsName =
+        !name || name.toLowerCase().startsWith("anon-");
+
+        statsEl.innerHTML = `
+          <div class="daily-summary">
+            Played: ${summary.played.toLocaleString()}
+            &nbsp;|&nbsp;
+            Avg: ${
+              summary.average === null
+                ? "—"
+                : summary.average.toFixed(1)
+            }
+            &nbsp;|&nbsp;
+            Median: ${
+              summary.median === null
+                ? "—"
+                : summary.median
+            }
+          </div>
+
+          ${leaderboardTable(
+            ["User", "Entropy", "Moves", "First"],
+            rows,
+            "No completed Daily Shuffles yet."
+          )}
+
+          ${
+            needsName
+              ? `
+                <div class="leaderboard-divider"></div>
+
+                <div class="profile-section-title">
+                  Choose a Display Name
+                </div>
+
+                <input
+                  id="completionDisplayNameInput"
+                  maxlength="20"
+                  placeholder="Choose a name"
+                  style="
+                    width: 100%;
+                    margin: 8px 0 10px;
+                    padding: 10px 12px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(255,255,255,.16);
+                    background: rgba(255,255,255,.08);
+                    color: white;
+                    font-weight: 700;
+                  "
+                />
+
+                <button class="secondary" onclick="saveCompletionDisplayName()">
+                  Save Display Name
+                </button>
+              `
+              : ""
+          }
+        `;
+
+        return;
+      }
+
+      const activeStreak = randomStats.currentPerfectStreak || 0;
+      const longestStreak = randomStats.bestPerfectStreak || 0;
+
+      statsEl.innerHTML = `
         <div class="mini-stat">
           <span>Final Entropy</span>
           <strong>${score}</strong>
@@ -4515,7 +4751,15 @@ async function copyProfileStats() {
           <strong>${moves}</strong>
         </div>
 
-        ${modeSpecificStats}
+        <div class="mini-stat">
+          <span>Active Streak 🎲</span>
+          <strong>${activeStreak}</strong>
+        </div>
+
+        <div class="mini-stat">
+          <span>Longest Streak 🎲</span>
+          <strong>${longestStreak}</strong>
+        </div>
       `;
 
       document
@@ -4537,7 +4781,17 @@ function closeCompletionModal() {
       }
     });
     window.addEventListener("online", () => {
-      syncPendingDailyResults();
+          syncPendingDailyResults();
+        });
+        document.addEventListener("click", event => {
+      const menu = document.getElementById("mobileMenu");
+      const actions = document.querySelector(".mobile-top-actions");
+
+      if (!menu || !actions) return;
+
+      if (!actions.contains(event.target)) {
+        closeMobileMenu();
+      }
     });
 
     const tutorialSlides = [
@@ -4648,7 +4902,7 @@ function closeCompletionModal() {
         Use the ‹› arrows to browse results from previous Daily Shuffles.<br><br>
 
         <b>Streaks 🔥</b><br>
-        Tracks the longest Daily Shuffle streaks (consecutive perfect placements) ever achieved.<br><br>
+        Displays the longest Daily Shuffle +0 Streaks (consecutive perfect placements) by profile.<br><br>
 
         <b>Average 📉</b><br>
         Ranks players by average entropy across completed Daily Shuffles. A minimum of 10 completed Daily Shuffles is required to qualify.
