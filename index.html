@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.14.2237.
+Prototype version 2026.06.15.2050.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -1177,6 +1177,17 @@ Do not copy, distribute, modify, or commercialize without permission.
       opacity: .8;
     }
 
+    .copyable-label {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .copyable-label::after {
+      content: "  ⧉";
+      opacity: .55;
+      font-size: .9em;
+    }
+
     .footer {
       margin-top: 10px;
       padding-bottom: 10px;
@@ -1942,6 +1953,71 @@ Do not copy, distribute, modify, or commercialize without permission.
   </div>
 </div>
 
+<div id="randomNewGameModal" class="tutorial-modal">
+  <div class="tutorial-content">
+    <button class="tutorial-x" onclick="closeRandomNewGameModal()">✕</button>
+
+    <div class="tutorial-slide-title">New Shuffle</div>
+
+    <div class="tutorial-slide-body">
+      <button onclick="startGeneratedRandomShuffle()" style="width:100%; margin-bottom:10px;">
+        🎲 Generate Random Shuffle
+      </button>
+
+      <button class="secondary" onclick="showShuffleCodeInput()" style="width:100%; margin-bottom:10px;">
+        🔢 Enter Shuffle Code
+      </button>
+
+      <button class="secondary" onclick="showDailyReplayInput()" style="width:100%;">
+        📅 Replay Past Daily
+      </button>
+
+      <div id="shuffleCodeEntry" class="hidden" style="margin-top:16px;">
+        <input
+          id="shuffleCodeInput"
+          maxlength="8"
+          placeholder="Enter code"
+          style="
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.16);
+            background: rgba(255,255,255,.08);
+            color: white;
+            font-weight: 700;
+          "
+        />
+
+        <button onclick="startEnteredShuffleCode()" style="width:100%;">
+          Play
+        </button>
+      </div>
+
+      <div id="dailyReplayEntry" class="hidden" style="margin-top:16px;">
+        <input
+          id="dailyReplayInput"
+          type="date"
+          style="
+            width: 100%;
+            margin-bottom: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,.16);
+            background: rgba(255,255,255,.08);
+            color: white;
+            font-weight: 700;
+          "
+        />
+
+        <button onclick="startDailyReplayShuffle()" style="width:100%;">
+          Start Daily Replay
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="leaderboardModal" class="tutorial-modal">
   <div class="tutorial-content">
     <button class="tutorial-x" onclick="closeLeaderboardModal()">✕</button>
@@ -2039,6 +2115,10 @@ Do not copy, distribute, modify, or commercialize without permission.
     let originalLayout = [];
     let originalShuffle = [];
     let gameMode = localStorage.getItem("entropy.gameMode") || "daily";
+    let activeRandomSeed =
+      localStorage.getItem("entropy.activeRandomSeed") || generateShuffleCode();
+    let randomSeedMode =
+      localStorage.getItem("entropy.randomSeedMode") || "random";
     let activeDailySeed = currentDailySeed();
     let entropyProfile = {};
     let dragging = null;
@@ -2762,6 +2842,16 @@ Do not copy, distribute, modify, or commercialize without permission.
       });
     }
 
+    function formatSeedDate(seed) {
+      const [year, month, day] = seed.split("-").map(Number);
+
+      return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+    }
+
     function formattedLeaderboardDate() {
       const [year, month, day] =
         leaderboardDate.split("-").map(Number);
@@ -2980,40 +3070,14 @@ Do not copy, distribute, modify, or commercialize without permission.
       setMessage("Local statistics reset.");
     }
 
-function confirmNewGame() {
-    if (gameMode === "daily") {
-    setMessage("Daily Shuffle can only be played once per day.");
-    return;
-  }
-  const hasProgress =
-    moves > 0 ||
-    completedFoundationCardCount() > 0;
+    function confirmNewGame() {
+      if (gameMode === "daily") {
+        setMessage("Daily Shuffle can only be played once per day.");
+        return;
+      }
 
-  // Skip confirmation for untouched fresh boards
-  if (!hasProgress) {
-    closeCompletionModal();
-    newGame();
-    return;
-  }
-
-  const confirmed = confirm(
-    "Start a new game? Your current run will be lost."
-  );
-
-  if (confirmed) {
-        if (
-      gameMode === "random" &&
-      randomStats.runStarted &&
-      completedFoundationCardCount() < 52
-    ) {
-      randomStats.currentPerfectStreak = 0;
-      randomStats.runStarted = false;
-      saveRandomStats();
+      openRandomNewGameModal();
     }
-    closeCompletionModal();
-    newGame();
-  }
-}
 
 
     function completedFoundationCardCount() {
@@ -3104,7 +3168,16 @@ function confirmNewGame() {
           currentDailySeed()
         );
       } else {
-        deck = shuffle(makeDeck());
+        if (!activeRandomSeed) {
+          activeRandomSeed = generateShuffleCode();
+        }
+
+        localStorage.setItem("entropy.activeRandomSeed", activeRandomSeed);
+
+        deck = seededShuffle(
+          makeDeck(),
+          activeRandomSeed
+        );
       }
       originalShuffle = [...deck].reverse().map(cardText);
       grid = Array.from({ length: 4 }, () => Array(4).fill(null));
@@ -3135,6 +3208,37 @@ function confirmNewGame() {
       log("Original deal saved.");
       setMessage("New game dealt.");
       render();
+    }
+
+    function chooseRandomNewGame() {
+      const choice = prompt(
+        "New Random Shuffle:\n\n1 = Generate random code\n2 = Enter code\n3 = Replay Daily date YYYY-MM-DD"
+      );
+
+      if (choice === "1") {
+        activeRandomSeed = generateShuffleCode();
+        randomSeedMode = "random";
+      } else if (choice === "2") {
+        const code = cleanShuffleCode(prompt("Enter shuffle code:") || "");
+        if (!code) return;
+        activeRandomSeed = code;
+        randomSeedMode = "code";
+      } else if (choice === "3") {
+        const date = prompt("Enter Daily date YYYY-MM-DD:");
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date || "")) {
+          setMessage("Enter date as YYYY-MM-DD.");
+          return;
+        }
+        activeRandomSeed = date;
+        randomSeedMode = "dailyReplay";
+      } else {
+        return;
+      }
+
+      localStorage.setItem("entropy.activeRandomSeed", activeRandomSeed);
+      localStorage.setItem("entropy.randomSeedMode", randomSeedMode);
+
+      newGame();
     }
 
     function activeRunKey(mode = gameMode) {
@@ -3210,6 +3314,164 @@ function seededShuffle(arr, seedText) {
 
 function currentDailySeed() {
   return localDateSeed();
+}
+
+function generateShuffleCode() {
+  return Math.random()
+    .toString(36)
+    .slice(2, 10)
+    .toUpperCase();
+}
+
+function cleanShuffleCode(code) {
+  return code
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8);
+}
+
+function openRandomNewGameModal() {
+  const replayInput = document.getElementById("dailyReplayInput");
+    if (replayInput) {
+      replayInput.value = "";
+
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+
+      replayInput.max = [
+        yesterday.getFullYear(),
+        String(yesterday.getMonth() + 1).padStart(2, "0"),
+        String(yesterday.getDate()).padStart(2, "0")
+      ].join("-");
+    }
+  document.getElementById("shuffleCodeEntry")?.classList.add("hidden");
+  document.getElementById("dailyReplayEntry")?.classList.add("hidden");
+  document.getElementById("shuffleCodeInput").value = "";
+  document.getElementById("dailyReplayInput").value = "";
+
+  document
+    .getElementById("randomNewGameModal")
+    .classList.add("open");
+}
+
+function closeRandomNewGameModal() {
+  document
+    .getElementById("randomNewGameModal")
+    .classList.remove("open");
+}
+
+function showShuffleCodeInput() {
+  document.getElementById("shuffleCodeEntry")?.classList.remove("hidden");
+  document.getElementById("dailyReplayEntry")?.classList.add("hidden");
+}
+
+function showDailyReplayInput() {
+  document.getElementById("dailyReplayEntry")?.classList.remove("hidden");
+  document.getElementById("shuffleCodeEntry")?.classList.add("hidden");
+}
+
+function maybeConfirmAbandonRandomRun() {
+  const hasProgress =
+    moves > 0 ||
+    completedFoundationCardCount() > 0;
+
+  if (!hasProgress) return true;
+
+  return confirm(
+    "Start a new game? Your current run will be lost."
+  );
+}
+
+function finishStartingRandomShuffle(seed, mode) {
+  if (!maybeConfirmAbandonRandomRun()) return;
+
+  if (
+    randomStats.runStarted &&
+    completedFoundationCardCount() < 52
+  ) {
+    randomStats.currentPerfectStreak = 0;
+    randomStats.runStarted = false;
+    saveRandomStats();
+  }
+
+  activeRandomSeed = seed;
+  randomSeedMode = mode;
+
+  localStorage.setItem("entropy.activeRandomSeed", activeRandomSeed);
+  localStorage.setItem("entropy.randomSeedMode", randomSeedMode);
+
+  closeRandomNewGameModal();
+  closeCompletionModal();
+
+  newGame();
+}
+
+function startGeneratedRandomShuffle() {
+  finishStartingRandomShuffle(
+    generateShuffleCode(),
+    "random"
+  );
+}
+
+function startEnteredShuffleCode() {
+  const code = cleanShuffleCode(
+    document.getElementById("shuffleCodeInput")?.value || ""
+  );
+
+  if (!code) {
+    setMessage("Enter a shuffle code first.");
+    return;
+  }
+
+  finishStartingRandomShuffle(code, "code");
+}
+
+function startDailyReplayShuffle() {
+  const date = (
+    document.getElementById("dailyReplayInput")?.value || ""
+  ).trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    setMessage("Choose a Daily Replay date.");
+    return;
+  }
+
+  if (date >= currentDailySeed()) {
+    setMessage("Daily Replay is for past dates only.");
+    return;
+  }
+
+  finishStartingRandomShuffle(date, "dailyReplay");
+}
+
+function randomShuffleLabel() {
+  if (randomSeedMode === "dailyReplay") {
+    return `📅 DAILY REPLAY • ${activeRandomSeed}`;
+  }
+
+  if (randomSeedMode === "code") {
+    return `🔢 CODE SHUFFLE • ${activeRandomSeed}`;
+  }
+
+  return `🎲 RANDOM SHUFFLE • ${activeRandomSeed}`;
+}
+
+async function copyActiveShuffleCode() {
+  if (gameMode !== "random" || !activeRandomSeed) return;
+
+  const label =
+    randomSeedMode === "dailyReplay"
+      ? `Daily Replay date copied: ${activeRandomSeed}`
+      : `Shuffle code copied: ${activeRandomSeed}`;
+
+  try {
+    await navigator.clipboard.writeText(activeRandomSeed);
+    setMessage(label);
+  } catch (err) {
+    console.log(activeRandomSeed);
+    setMessage("Copy failed, but the code was printed to the console.");
+  }
 }
 
 function switchGameMode(mode) {
@@ -4172,10 +4434,16 @@ gain.gain.exponentialRampToValueAtTime(
       const boardModeLabel = document.getElementById("boardModeLabel");
 
         if (boardModeLabel) {
-          boardModeLabel.textContent =
-            gameMode === "daily"
-              ? `📅 DAILY SHUFFLE • ${formattedDailyDate()}`
-              : "🎲 RANDOM SHUFFLE";
+          if (gameMode === "daily") {
+            boardModeLabel.textContent =
+              `📅 DAILY SHUFFLE • ${formattedDailyDate()}`;
+            boardModeLabel.classList.remove("copyable-label");
+            boardModeLabel.onclick = null;
+          } else {
+            boardModeLabel.textContent = randomShuffleLabel();
+            boardModeLabel.classList.add("copyable-label");
+            boardModeLabel.onclick = copyActiveShuffleCode;
+          }
         }
       const legalTargets = legalTargetsForSelected();
 
@@ -4311,15 +4579,36 @@ gain.gain.exponentialRampToValueAtTime(
         .join(" | ");
     }
 
+    function shareHeaderLines() {
+      if (gameMode === "daily") {
+        return [
+          "SolEntropy | Daily Shuffle",
+          formatSeedDate(currentDailySeed())
+        ];
+      }
+
+      if (randomSeedMode === "dailyReplay") {
+        return [
+          "SolEntropy | Daily Replay",
+          formatSeedDate(activeRandomSeed)
+        ];
+      }
+
+      return [
+        "SolEntropy | Random Shuffle",
+        `Code: ${activeRandomSeed}`
+      ];
+    }
+
     function buildGameLogText() {
 
       const includeShuffle =
         completedFoundationCardCount() === 52;
 
       return [
-        `SolEntropy | ${gameModeLabel()}`,
-        `Entropy: ${score}`,
+        ...shareHeaderLines(),
         "",
+        `Entropy: ${score}`,
         `Entropy Path: ${entropyProfileText()}`,
         `Moves: ${moves}`,
         `Draw pile: ${drawPile.length}`,
@@ -4359,9 +4648,9 @@ gain.gain.exponentialRampToValueAtTime(
         .join(" | ");
 
       return [
-        `SolEntropy | ${gameModeLabel()}`,
-        `Entropy: ${score}`,
+        ...shareHeaderLines(),
         "",
+        `Entropy: ${score}`,
         `Entropy Path: ${entropyProfileText()}`,
         `Foundation Cards: ${completedFoundationCardCount()} / 52`,
         "",
@@ -4385,9 +4674,9 @@ gain.gain.exponentialRampToValueAtTime(
         .join(" | ");
 
       return [
-        `SolEntropy | ${gameModeLabel()}`,
-        `Final Entropy: ${score}`,
+        ...shareHeaderLines(),
         "",
+        `Final Entropy: ${score}`,
         `Entropy Path: ${entropyProfileText()}`,
         // `Foundation Cards: ${completedFoundationCardCount()} / 52`,
         // `Foundations: ${foundationTops}`,
@@ -4886,7 +5175,7 @@ function closeCompletionModal() {
         Daily Shuffles can only be completed once per day.<br><br>
 
         <b>Random Shuffle 🎲</b><br>
-        Unlimited plays with randomly generated shuffles. Results do not contribute to your profile stats.
+        Unlimited play with random shuffles, shareable challenge codes, and past Daily Replays. Random mode maintains its own +0 streaks and does not affect Daily rankings or leaderboard stats.
         `
 
       },
