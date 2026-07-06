@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.06.15.2050.
+Prototype version 2026.07.06.1402.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -940,6 +940,69 @@ Do not copy, distribute, modify, or commercialize without permission.
   font-size: 13px;
 }
 
+#drawPileTracker {
+  margin-top: 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.draw-pile-suit-row {
+  display: grid;
+  grid-template-columns: 18px repeat(13, 20px);
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  font-weight: 800;
+}
+
+.draw-pile-piece {
+  width: 20px;
+  font-size: 18px;
+  text-align: center;
+  opacity: .9;
+}
+
+.draw-pile-card {
+  width: 20px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.seen-card {
+  opacity: .35;
+  text-decoration: line-through;
+}
+
+.red-suit {
+  color: #d65a5a;
+}
+
+.black-suit {
+  color: #ececec;
+}
+
+.red-suit {
+  color: #d65a5a;
+}
+
+.black-suit {
+  color: #ececec;
+}
+
+.clickable-stat {
+  cursor: pointer;
+  position: relative;
+}
+
+.clickable-stat:hover {
+  background: rgba(255,255,255,.08);
+}
+
 .toggle-switch {
   position: relative;
 
@@ -1733,7 +1796,7 @@ Do not copy, distribute, modify, or commercialize without permission.
         </div>
 
         <div>
-          <span>Draw Pile</span>
+          <span>Draw Pile 👀</span>
           <strong id="mobileDrawPile">0</strong>
         </div>
       </div>
@@ -1953,6 +2016,18 @@ Do not copy, distribute, modify, or commercialize without permission.
   </div>
 </div>
 
+<div id="drawPileModal" class="tutorial-modal">
+  <div class="tutorial-content">
+    <button class="tutorial-x" onclick="closeDrawPileModal()">✕</button>
+
+    <div class="tutorial-slide-title">Draw Pile</div>
+
+    <div class="tutorial-slide-body">
+      <div id="drawPileTracker"></div>
+    </div>
+  </div>
+</div>
+
 <div id="randomNewGameModal" class="tutorial-modal">
   <div class="tutorial-content">
     <button class="tutorial-x" onclick="closeRandomNewGameModal()">✕</button>
@@ -2083,14 +2158,6 @@ Do not copy, distribute, modify, or commercialize without permission.
       </button>
     </div>
 
-    <button
-      id="completionNewGameButton"
-      class="tutorial-close new-game-btn"
-      onclick="confirmNewGame()"
-    >
-      New Game
-    </button>
-
   </div>
 </div>
 
@@ -2119,7 +2186,8 @@ Do not copy, distribute, modify, or commercialize without permission.
       localStorage.getItem("entropy.activeRandomSeed") || generateShuffleCode();
     let randomSeedMode =
       localStorage.getItem("entropy.randomSeedMode") || "random";
-    let activeDailySeed = currentDailySeed();
+      let activeDailySeed =
+      localStorage.getItem("entropy.activeDailySeed") || currentDailySeed();
     let entropyProfile = {};
     let dragging = null;
     let dragGhost = null;
@@ -2216,6 +2284,42 @@ Do not copy, distribute, modify, or commercialize without permission.
       if (error) {
         console.error("Player profile setup failed:", error);
       }
+    }
+
+    async function loadSqlProfileStats() {
+      if (!currentPlayer) return null;
+
+      const { data, error } = await supabaseClient
+        .from("daily_results")
+        .select("score, moves")
+        .eq("player_id", currentPlayer.id);
+
+      if (error) {
+        console.error("SQL profile stats load failed:", error);
+        return null;
+      }
+
+      const scores = data.map(row => row.score);
+
+      if (!data.length) {
+        return {
+          bestScore: null,
+          averageEntropy: null,
+          completedRuns: 0,
+          scores: []
+        };
+      }
+
+      const completedRuns = data.length;
+      const totalEntropy = scores.reduce((sum, score) => sum + score, 0);
+      const bestScore = Math.min(...scores);
+
+      return {
+        bestScore,
+        averageEntropy: totalEntropy / completedRuns,
+        completedRuns,
+        scores
+      };
     }
 
 
@@ -3108,6 +3212,10 @@ Do not copy, distribute, modify, or commercialize without permission.
         profileStats.dailyEntropyScores.push(score);
 
         profileStats.lastDailyCompletedSeed = currentDailySeed();
+        localStorage.setItem(
+          "entropy.lastCompletedDailySeed",
+          currentDailySeed()
+        );
 
         saveProfileStats();
         const completedDailyResult = {
@@ -3250,6 +3358,17 @@ Do not copy, distribute, modify, or commercialize without permission.
     }
 
     function saveActiveRun() {
+      const completedDailySeed =
+        localStorage.getItem("entropy.lastCompletedDailySeed");
+
+      if (
+        gameMode === "daily" &&
+        completedDailySeed === currentDailySeed() &&
+        !runCompleted
+      ) {
+        return;
+      }
+
       localStorage.setItem(activeRunKey(), snapshot());
     }
 
@@ -3261,8 +3380,51 @@ Do not copy, distribute, modify, or commercialize without permission.
       const saved = localStorage.getItem(activeRunKey(mode));
       if (!saved) return false;
 
-      restore(saved);
-      return true;
+      try {
+        const parsed = JSON.parse(saved);
+
+        if (
+          mode === "daily" &&
+          parsed.dailySeed &&
+          parsed.dailySeed !== currentDailySeed()
+        ) {
+          localStorage.removeItem(activeRunKey(mode));
+          return false;
+        }
+
+        restore(saved);
+        return true;
+      } catch (err) {
+        localStorage.removeItem(activeRunKey(mode));
+        return false;
+      }
+    }
+
+    function ensureCurrentDailyRun() {
+      if (gameMode !== "daily") return;
+
+      const today = currentDailySeed();
+      const oldSeed = activeDailySeed;
+
+      if (oldSeed !== today) {
+        if (
+          profileStats.lastDailyStartedSeed === oldSeed &&
+          profileStats.lastDailyCompletedSeed !== oldSeed
+        ) {
+          profileStats.currentDailyPerfectStreak = 0;
+          saveProfileStats();
+          updatePlayerLeaderboardStats();
+        }
+
+        activeDailySeed = today;
+        localStorage.setItem("entropy.activeDailySeed", activeDailySeed);
+      }
+
+      if (!loadActiveRun("daily")) {
+        newGame();
+      } else {
+        render();
+      }
     }
 
   function localDateSeed() {
@@ -3508,7 +3670,11 @@ function switchGameMode(mode) {
         runCompleted,
         usedUnlimitedUndoThisRun,
         entropyProfile,
-        firstPlacement
+        firstPlacement,
+        gameMode,
+        dailySeed: gameMode === "daily" ? currentDailySeed() : null,
+        randomSeed: gameMode === "random" ? activeRandomSeed : null,
+        randomSeedMode: gameMode === "random" ? randomSeedMode : null
       };
 
       if (includeStreaks) {
@@ -4428,7 +4594,6 @@ gain.gain.exponentialRampToValueAtTime(
     }
 
     function render() {
-      checkDailyReset();
       const gridEl = document.getElementById("grid");
       const fEl = document.getElementById("foundations");
       const boardModeLabel = document.getElementById("boardModeLabel");
@@ -4496,7 +4661,7 @@ gain.gain.exponentialRampToValueAtTime(
       document.getElementById("score").textContent = score;
       document.getElementById("moves").textContent = moves;
       document.getElementById("drawCount").textContent = drawPile.length;
-
+      document.getElementById("drawCount").onclick = openDrawPileModal;
       document.getElementById("currentStreak").textContent = displayCurrentStreak();
       document.getElementById("runBestStreak").textContent = displayBestStreak();
       document.getElementById("foundationCards").textContent = `${completedFoundationCardCount()} / 52`;
@@ -4515,7 +4680,8 @@ gain.gain.exponentialRampToValueAtTime(
       document.getElementById("mobileBestStreak").textContent = displayBestStreak();
       document.getElementById("mobileMoves").textContent = moves;
       document.getElementById("mobileDrawPile").textContent = drawPile.length;
-
+      document.getElementById("mobileDrawPile").onclick = openDrawPileModal;
+      attachDrawPileClickHandlers();
       document.querySelectorAll(".undo-btn").forEach(button => {
         const unavailable =
           runCompleted ||
@@ -4537,11 +4703,6 @@ gain.gain.exponentialRampToValueAtTime(
       document.querySelectorAll(".copy-results-btn").forEach(button => {
         button.textContent = shareLabel;
       });
-
-      if (gameMode === "daily" && activeDailySeed !== currentDailySeed()) {
-        activeDailySeed = currentDailySeed();
-        newGame();
-      }
 
       const logEl = document.getElementById("log");
       logEl.innerHTML = logEntries.map(e => `<div class="log-entry">${e}</div>`).join("");
@@ -4598,6 +4759,83 @@ gain.gain.exponentialRampToValueAtTime(
         "SolEntropy | Random Shuffle",
         `Code: ${activeRandomSeed}`
       ];
+    }
+
+    function remainingDrawPileCardIds() {
+      return new Set(drawPile.map(card => `${card.rank}${card.suit}`));
+    }
+
+    function drawPileTrackerHtml() {
+      const remaining = remainingDrawPileCardIds();
+
+      return SUITS.map(suit => {
+        const piece =
+          suit === "♠" ? "♙" :
+          suit === "♣" ? "♗" :
+          suit === "♦" ? "♘" :
+          "♖";
+
+        const suitClass =
+          suit === "♥" || suit === "♦"
+            ? "red-suit"
+            : "black-suit";
+
+        const cards = RANKS.map(rank => {
+          const id = `${rank}${suit}`;
+          const stillHidden = remaining.has(id);
+
+          return `
+            <span class="draw-pile-card ${stillHidden ? "" : "seen-card"}">
+              ${rank}<span class="${suitClass}">${suit}</span>
+            </span>
+          `;
+        }).join("");
+
+        return `
+          <div class="draw-pile-suit-row">
+            <span class="draw-pile-piece ${suitClass}">
+              ${piece}
+            </span>
+
+            ${cards}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function openDrawPileModal() {
+      const tracker = document.getElementById("drawPileTracker");
+      if (tracker) {
+        tracker.innerHTML = drawPileTrackerHtml();
+      }
+
+      document
+        .getElementById("drawPileModal")
+        .classList.add("open");
+    }
+
+    function attachDrawPileClickHandlers() {
+      const desktopDrawPile = document
+        .getElementById("drawCount")
+        ?.closest(".stat");
+
+      const mobileDrawPile = document
+        .getElementById("mobileDrawPile")
+        ?.closest("div");
+
+      [desktopDrawPile, mobileDrawPile].forEach(el => {
+        if (!el) return;
+
+        el.onclick = openDrawPileModal;
+        el.classList.add("clickable-stat");
+        el.title = "View draw pile";
+      });
+    }
+
+    function closeDrawPileModal() {
+      document
+        .getElementById("drawPileModal")
+        .classList.remove("open");
     }
 
     function buildGameLogText() {
@@ -4751,39 +4989,39 @@ gain.gain.exponentialRampToValueAtTime(
       ].join("\n");
     }
 
-function dailyEntropyBuckets() {
-  const buckets = Array(11).fill(0);
+    function dailyEntropyBuckets(scores = profileStats.dailyEntropyScores) {
+      const buckets = Array(11).fill(0);
 
-  profileStats.dailyEntropyScores.forEach(score => {
-    const bucket = score >= 10 ? 10 : score;
-    buckets[bucket]++;
-  });
+      scores.forEach(score => {
+        const bucket = score >= 10 ? 10 : score;
+        buckets[bucket]++;
+      });
 
-  return buckets;
-}
+      return buckets;
+    }
 
-function renderDailyEntropyChart() {
-  const chart = document.getElementById("dailyEntropyChart");
-  if (!chart) return;
+    function renderDailyEntropyChart(scores = profileStats.dailyEntropyScores) {
+      const chart = document.getElementById("dailyEntropyChart");
+      if (!chart) return;
 
-  const buckets = dailyEntropyBuckets();
-  const max = Math.max(...buckets, 1);
+      const buckets = dailyEntropyBuckets(scores);
+      const max = Math.max(...buckets, 1);
 
-  chart.innerHTML = buckets.map((count, i) => {
-    const label = i === 10 ? "10+" : i;
-    const width = count === 0 ? 0 : Math.max(8, (count / max) * 100);
+      chart.innerHTML = buckets.map((count, i) => {
+        const label = i === 10 ? "10+" : i;
+        const width = count === 0 ? 0 : Math.max(8, (count / max) * 100);
 
-    return `
-      <div class="daily-chart-row">
-        <span>${label}</span>
-        <div class="daily-chart-track">
-          <div class="daily-chart-bar" style="width:${width}%"></div>
-        </div>
-        <strong>${count}</strong>
-      </div>
-    `;
-  }).join("");
-}
+        return `
+          <div class="daily-chart-row">
+            <span>${label}</span>
+            <div class="daily-chart-track">
+              <div class="daily-chart-bar" style="width:${width}%"></div>
+            </div>
+            <strong>${count}</strong>
+          </div>
+        `;
+      }).join("");
+    }
 
 async function copyProfileStats() {
   const text = buildProfileStatsText();
@@ -4861,22 +5099,34 @@ async function copyProfileStats() {
         ?.classList.remove("open");
     }
 
-    function openProfileModal() {
-      const avg = averageEntropy();
+    async function openProfileModal() {
+      const sqlStats = await loadSqlProfileStats();
+
+      const bestScore = sqlStats
+        ? sqlStats.bestScore
+        : profileStats.bestScore;
+
+      const averageEntropy = sqlStats
+        ? sqlStats.averageEntropy
+        : averageEntropy();
+
+      const completedRuns = sqlStats
+        ? sqlStats.completedRuns
+        : profileStats.completedRuns;
 
       document.getElementById("modalBestScore").textContent =
-        profileStats.bestScore === null ? "—" : profileStats.bestScore;
+        bestScore === null ? "—" : bestScore;
 
       document.getElementById("modalAverageEntropy").textContent =
-        avg === null ? "—" : avg.toFixed(1);
+        averageEntropy === null ? "—" : averageEntropy.toFixed(1);
 
       document.getElementById("modalCompletedRuns").textContent =
-        profileStats.completedRuns;
+        completedRuns;
 
       document.getElementById("modalLongestStreak").textContent =
         profileStats.bestDailyPerfectStreak || 0;
 
-      renderDailyEntropyChart();
+      renderDailyEntropyChart(sqlStats?.scores);
 
       document.getElementById("profileModal").classList.add("open");
 
@@ -4890,10 +5140,6 @@ async function copyProfileStats() {
     async function openCompletionModal() {
       document
         .getElementById("completionCopyButton")
-        ?.classList.toggle("hidden", gameMode === "daily");
-
-      document
-        .getElementById("completionNewGameButton")
         ?.classList.toggle("hidden", gameMode === "daily");
 
       const title = document.querySelector(
@@ -5063,6 +5309,7 @@ function closeCompletionModal() {
 }
 
     window.addEventListener("load", () => {
+      ensureCurrentDailyRun();
       const seenTutorial = localStorage.getItem("entropy.v2026.05.seenTutorial");
 
       if (!seenTutorial) {
@@ -5072,6 +5319,15 @@ function closeCompletionModal() {
     window.addEventListener("online", () => {
           syncPendingDailyResults();
         });
+  window.addEventListener("focus", ensureCurrentDailyRun);
+
+  window.addEventListener("pageshow", ensureCurrentDailyRun);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      ensureCurrentDailyRun();
+    }
+  });
         document.addEventListener("click", event => {
       const menu = document.getElementById("mobileMenu");
       const actions = document.querySelector(".mobile-top-actions");
