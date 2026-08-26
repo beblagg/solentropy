@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.07.06.1402.
+Prototype version 2026.08.26.1555.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -1199,6 +1199,10 @@ Do not copy, distribute, modify, or commercialize without permission.
       margin-bottom: 14px;
     }
 
+    .desktop-controls .copy-results-btn {
+      grid-column: 1 / -1;
+    }
+
     .desktop-controls button {
       width: 100%;
     }
@@ -1823,12 +1827,26 @@ Do not copy, distribute, modify, or commercialize without permission.
       <div class="desktop-controls mobile-hide-status">
         <button class="new-game-btn" onclick="confirmNewGame()">New Game</button>
         <button class="secondary undo-btn" onclick="undo()">Undo</button>
-        <button class="secondary" onclick="openTutorial()">How to Play</button>
-        <button class="secondary" onclick="openProfileModal()">Profile</button>
-        <button class="secondary" onclick="openSettingsModal()">Settings</button>
+
+        <button class="secondary" onclick="openLeaderboardModal()">
+          Leaderboards
+        </button>
+
+        <button class="secondary" onclick="openProfileModal()">
+          Profile
+        </button>
+
+        <button class="secondary" onclick="openTutorial()">
+          How to Play
+        </button>
+
+        <button class="secondary" onclick="openSettingsModal()">
+          Settings
+        </button>
+
         <button class="secondary copy-results-btn" id="copyResultsBtn" onclick="copyResults()">
-  Copy State
-</button>
+          Copy State
+        </button>
       </div>
       <div class="score-card mobile-hide-status">
       <div class="stat"><strong>Entropy</strong><span id="score">0</span></div>
@@ -2205,6 +2223,7 @@ Do not copy, distribute, modify, or commercialize without permission.
     };
     let leaderboardDate = currentDailySeed();
     let leaderboardView = "daily";
+    let leaderboardStatsUpdateChain = Promise.resolve();
     let dailySummary = {
       played: 0,
       average: null,
@@ -2320,6 +2339,42 @@ Do not copy, distribute, modify, or commercialize without permission.
         completedRuns,
         scores
       };
+    }
+
+    async function reconcileCurrentDailyRun() {
+      if (gameMode !== "daily") return;
+
+      const today = currentDailySeed();
+      const completedOnServer =
+        await hasCompletedDailyOnServer(today);
+
+      if (completedOnServer) {
+        profileStats.lastDailyCompletedSeed = today;
+
+        localStorage.setItem(
+          "entropy.lastCompletedDailySeed",
+          today
+        );
+
+        saveProfileStats();
+
+        const loaded = loadActiveRun("daily");
+
+        if (loaded && runCompleted) {
+          render();
+          return;
+        }
+
+        // Server is authoritative: don't allow replay of an
+        // already-completed Daily even if local state is stale.
+        runCompleted = true;
+        render();
+
+        setMessage("Today's Daily Shuffle is already complete.");
+        return;
+      }
+
+      ensureCurrentDailyRun();
     }
 
 
@@ -2540,24 +2595,53 @@ Do not copy, distribute, modify, or commercialize without permission.
       return true;
     }
 
-    async function updatePlayerLeaderboardStats() {
-      if (!currentPlayer) return;
+    async function hasCompletedDailyOnServer(seed = currentDailySeed()) {
+      if (!currentPlayer) return false;
 
-      const { error } = await supabaseClient
-        .from("players")
-        .update({
-          active_streak: profileStats.currentDailyPerfectStreak || 0,
-          best_streak: profileStats.bestDailyPerfectStreak || 0,
-          completed_dailies: profileStats.completedRuns || 0,
-          total_entropy: profileStats.totalEntropy || 0,
-          total_moves: profileStats.totalMoves || 0,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", currentPlayer.id);
+      const { data, error } = await supabaseClient
+        .from("daily_results")
+        .select("daily_seed")
+        .eq("player_id", currentPlayer.id)
+        .eq("daily_seed", seed)
+        .maybeSingle();
 
       if (error) {
-        console.error("Player leaderboard stats update failed:", error);
+        console.error("Daily completion check failed:", error);
+        return false;
       }
+
+      return !!data;
+    }
+
+    function updatePlayerLeaderboardStats() {
+      if (!currentPlayer) return Promise.resolve();
+
+      const payload = {
+        active_streak: profileStats.currentDailyPerfectStreak || 0,
+        best_streak: profileStats.bestDailyPerfectStreak || 0,
+        completed_dailies: profileStats.completedRuns || 0,
+        total_entropy: profileStats.totalEntropy || 0,
+        total_moves: profileStats.totalMoves || 0,
+        updated_at: new Date().toISOString()
+      };
+
+      leaderboardStatsUpdateChain = leaderboardStatsUpdateChain
+        .catch(() => {})
+        .then(async () => {
+          const { error } = await supabaseClient
+            .from("players")
+            .update(payload)
+            .eq("id", currentPlayer.id);
+
+          if (error) {
+            console.error(
+              "Player leaderboard stats update failed:",
+              error
+            );
+          }
+        });
+
+      return leaderboardStatsUpdateChain;
     }
 
     async function loadDailyLeaderboard(seed = leaderboardDate) {
@@ -3369,7 +3453,7 @@ Do not copy, distribute, modify, or commercialize without permission.
         return;
       }
 
-      localStorage.setItem(activeRunKey(), snapshot());
+      localStorage.setItem(activeRunKey(), snapshot(true));
     }
 
     function hasSavedRun(mode = gameMode) {
@@ -3636,20 +3720,23 @@ async function copyActiveShuffleCode() {
   }
 }
 
-function switchGameMode(mode) {
+async function switchGameMode(mode) {
   if (mode === gameMode) return;
 
   saveActiveRun();
 
   gameMode = mode;
   localStorage.setItem("entropy.gameMode", gameMode);
+
   setMessage(
     mode === "daily"
       ? "📅 Daily Shuffle"
       : "🎲 Random Shuffle"
   );
 
-  if (!loadActiveRun(gameMode)) {
+  if (mode === "daily") {
+    await reconcileCurrentDailyRun();
+  } else if (!loadActiveRun("random")) {
     newGame();
   }
 
@@ -3685,46 +3772,47 @@ function switchGameMode(mode) {
     }
 
     function streakSnapshot() {
+      if (gameMode === "daily") {
+        return {
+          currentDailyPerfectStreak:
+            profileStats.currentDailyPerfectStreak || 0
+        };
+      }
+
       return {
-        currentDailyPerfectStreak:
-          profileStats.currentDailyPerfectStreak || 0,
-
-        bestDailyPerfectStreak:
-          profileStats.bestDailyPerfectStreak || 0,
-
         randomCurrentPerfectStreak:
           randomStats.currentPerfectStreak || 0,
-
-        randomBestPerfectStreak:
-          randomStats.bestPerfectStreak || 0,
 
         randomRunStarted:
           !!randomStats.runStarted
       };
     }
 
-    function restoreStreakSnapshot(streaks) {
+    function restoreStreakSnapshot(streaks, mode) {
       if (!streaks) return;
 
-      profileStats.currentDailyPerfectStreak =
-        streaks.currentDailyPerfectStreak || 0;
+      if (
+        mode === "daily" &&
+        "currentDailyPerfectStreak" in streaks
+      ) {
+        profileStats.currentDailyPerfectStreak =
+          streaks.currentDailyPerfectStreak || 0;
 
-      profileStats.bestDailyPerfectStreak =
-        streaks.bestDailyPerfectStreak || 0;
+        saveProfileStats();
+      }
 
-      randomStats.currentPerfectStreak =
-        streaks.randomCurrentPerfectStreak || 0;
+      if (
+        mode === "random" &&
+        "randomCurrentPerfectStreak" in streaks
+      ) {
+        randomStats.currentPerfectStreak =
+          streaks.randomCurrentPerfectStreak || 0;
 
-      randomStats.bestPerfectStreak =
-        streaks.randomBestPerfectStreak || 0;
+        randomStats.runStarted =
+          !!streaks.randomRunStarted;
 
-      randomStats.runStarted =
-        !!streaks.randomRunStarted;
-
-      saveProfileStats();
-      saveRandomStats();
-
-      updatePlayerLeaderboardStats();
+        saveRandomStats();
+      }
     }
 
     function restore(state) {
@@ -3742,7 +3830,10 @@ function switchGameMode(mode) {
       runCompleted = s.runCompleted || false;
       usedUnlimitedUndoThisRun = s.usedUnlimitedUndoThisRun ?? false;
       entropyProfile = s.entropyProfile || {};
-      restoreStreakSnapshot(s.streaks);
+      restoreStreakSnapshot(
+        s.streaks,
+        s.gameMode || gameMode
+      );
       render();
     }
 
@@ -4058,6 +4149,7 @@ function switchGameMode(mode) {
         if (gameMode === "daily") {
           profileStats.currentDailyPerfectStreak = 0;
           saveProfileStats();
+          updatePlayerLeaderboardStats();
         }
 
         if (gameMode === "random") {
@@ -5308,26 +5400,40 @@ function closeCompletionModal() {
     .classList.remove("open");
 }
 
-    window.addEventListener("load", () => {
-      ensureCurrentDailyRun();
-      const seenTutorial = localStorage.getItem("entropy.v2026.05.seenTutorial");
+    window.addEventListener("load", async () => {
+      await initPlayer();
+
+      if (gameMode === "daily") {
+        await reconcileCurrentDailyRun();
+      } else if (!loadActiveRun("random")) {
+        newGame();
+      }
+
+      const seenTutorial =
+        localStorage.getItem("entropy.v2026.05.seenTutorial");
 
       if (!seenTutorial) {
         openTutorial();
       }
     });
+
     window.addEventListener("online", () => {
           syncPendingDailyResults();
         });
-  window.addEventListener("focus", ensureCurrentDailyRun);
+    window.addEventListener("focus", () => {
+      reconcileCurrentDailyRun();
+    });
 
-  window.addEventListener("pageshow", ensureCurrentDailyRun);
+    window.addEventListener("pageshow", () => {
+      reconcileCurrentDailyRun();
+    });
 
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      ensureCurrentDailyRun();
-    }
-  });
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) {
+        reconcileCurrentDailyRun();
+      }
+    });
+
         document.addEventListener("click", event => {
       const menu = document.getElementById("mobileMenu");
       const actions = document.querySelector(".mobile-top-actions");
@@ -5515,21 +5621,8 @@ function closeCompletionModal() {
       }
     }
 
-    window.addEventListener("load", () => {
-      initPlayer();
-      const seenTutorial =
-        localStorage.getItem("entropy.v2026.05.seenTutorial");
 
-      if (!seenTutorial) {
-        openTutorial();
-      }
-    });
 
-    if (!loadActiveRun(gameMode)) {
-      newGame();
-    } else {
-      render();
-    }
   </script>
   <footer class="footer">
     SolEntropy by Brandon Blagg<br>
