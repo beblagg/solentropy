@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.08.26.1555.
+Prototype version 2026.08.26.1722.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -2345,8 +2345,13 @@ Do not copy, distribute, modify, or commercialize without permission.
       if (gameMode !== "daily") return;
 
       const today = currentDailySeed();
+
       const completedOnServer =
         await hasCompletedDailyOnServer(today);
+
+      // The user may have switched modes while Supabase was loading.
+      // Never allow a stale Daily reconciliation to modify Random state.
+      if (gameMode !== "daily") return;
 
       if (completedOnServer) {
         profileStats.lastDailyCompletedSeed = today;
@@ -2360,13 +2365,15 @@ Do not copy, distribute, modify, or commercialize without permission.
 
         const loaded = loadActiveRun("daily");
 
+        // Check again because loading/restoring should only happen
+        // while Daily is still the active mode.
+        if (gameMode !== "daily") return;
+
         if (loaded && runCompleted) {
           render();
           return;
         }
 
-        // Server is authoritative: don't allow replay of an
-        // already-completed Daily even if local state is stale.
         runCompleted = true;
         render();
 
@@ -3461,11 +3468,24 @@ Do not copy, distribute, modify, or commercialize without permission.
     }
 
     function loadActiveRun(mode = gameMode) {
+      if (mode !== gameMode) return false;
+
       const saved = localStorage.getItem(activeRunKey(mode));
       if (!saved) return false;
 
       try {
         const parsed = JSON.parse(saved);
+
+        if (
+          parsed.gameMode &&
+          parsed.gameMode !== mode
+        ) {
+          console.error(
+            `Saved ${mode} run contains ${parsed.gameMode} state.`
+          );
+
+          return false;
+        }
 
         if (
           mode === "daily" &&
