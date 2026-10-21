@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.10.18.1342.
+Prototype version 2026.10.20.21:03.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -7197,6 +7197,19 @@ Do not copy, distribute, modify, or commercialize without permission.
 
         saveProfileStats();
 
+        // If this tab already has today's
+        // completed board in memory, preserve it.
+        // Focus/pageshow/visibility reconciliation
+        // should not replace it with an older
+        // local snapshot.
+        if (
+          runCompleted &&
+          activeDailySeed === today
+        ) {
+          render();
+          return;
+        }
+
         const loaded = loadActiveRun("daily");
 
         // Check again because loading/restoring should only happen
@@ -8877,6 +8890,11 @@ async function submitDailyResult(
       if (completedFoundationCardCount() !== 52) return;
 
       runCompleted = true;
+
+      // Persist the finished board immediately.
+      // This prevents a stale in-progress
+      // snapshot from surviving completion.
+      saveActiveRun();
 
       if (gameMode === "daily") {
         profileStats.completedRuns += 1;
