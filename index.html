@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.10.20.21:03.
+Prototype version 2026.10.23.23:08.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -2698,6 +2698,12 @@ Do not copy, distribute, modify, or commercialize without permission.
     .leaderboard-divider {
       margin: 12px 0;
       border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .active-streak-indicator {
+      font-size: 10px;
+      margin-left: 2px;
+      vertical-align: 1px;
     }
 
     .daily-summary {
@@ -7107,7 +7113,9 @@ Do not copy, distribute, modify, or commercialize without permission.
 
       const { data: existing, error: fetchError } = await supabaseClient
         .from("players")
-        .select("id, best_streak")
+        .select(
+          "id, active_streak, best_streak"
+        )
         .eq("id", currentPlayer.id)
         .maybeSingle();
 
@@ -7117,10 +7125,14 @@ Do not copy, distribute, modify, or commercialize without permission.
       }
 
       if (existing) {
-        profileStats.bestDailyPerfectStreak = Math.max(
-          profileStats.bestDailyPerfectStreak || 0,
-          existing.best_streak || 0
-        );
+        profileStats.currentDailyPerfectStreak =
+          existing.active_streak || 0;
+
+        profileStats.bestDailyPerfectStreak =
+          Math.max(
+            profileStats.bestDailyPerfectStreak || 0,
+            existing.best_streak || 0
+          );
 
         saveProfileStats();
 
@@ -7210,21 +7222,61 @@ Do not copy, distribute, modify, or commercialize without permission.
           return;
         }
 
-        const loaded = loadActiveRun("daily");
+        const loaded =
+          loadActiveRun("daily");
 
-        // Check again because loading/restoring should only happen
-        // while Daily is still the active mode.
-        if (gameMode !== "daily") return;
-
-        if (loaded && runCompleted) {
-          render();
+        // Check again because loading/restoring
+        // should only happen while Daily is
+        // still the active mode.
+        if (gameMode !== "daily") {
           return;
         }
 
+
+        if (
+          loaded &&
+          runCompleted
+        ) {
+          render();
+
+          return;
+        }
+
+
+        // Local storage may have been cleared
+        // even though Supabase still has the
+        // completed Daily.
+        const restored =
+          await restoreCompletedDailyFromServer(
+            today
+          );
+
+
+        if (gameMode !== "daily") {
+          return;
+        }
+
+
+        if (restored) {
+          setMessage(
+            "Today's Daily Shuffle is already complete."
+          );
+
+          return;
+        }
+
+
+        // We know the Daily was completed on
+        // the server even if an older run has
+        // no Solo recorder available.
         runCompleted = true;
+
         render();
 
-        setMessage("Today's Daily Shuffle is already complete.");
+        setMessage(
+          "Today's Daily Shuffle is already complete."
+        );
+
         return;
       }
 
@@ -7870,6 +7922,195 @@ Do not copy, distribute, modify, or commercialize without permission.
   }
 
 
+  function cardFromRecordedText(
+    text
+  ) {
+    if (!text) {
+      return null;
+    }
+
+    const suit =
+      text.slice(-1);
+
+    const rank =
+      text.slice(0, -1);
+
+    return {
+      id:
+        `recovered-${rank}${suit}-${crypto.randomUUID()}`,
+
+      rank,
+
+      suit,
+
+      value:
+        rankValue(rank)
+    };
+  }
+
+
+  async function restoreCompletedDailyFromServer(
+    seed
+  ) {
+    if (!currentPlayer) {
+      return false;
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("solo_runs")
+        .select(`
+          id,
+          score,
+          moves,
+          first_placement,
+          entropy_profile,
+          starting_state,
+          final_state
+        `)
+        .eq(
+          "player_id",
+          currentPlayer.id
+        )
+        .eq(
+          "mode",
+          "daily"
+        )
+        .eq(
+          "seed",
+          seed
+        )
+        .order(
+          "completed_at",
+          {
+            ascending: false
+          }
+        )
+        .limit(1)
+        .maybeSingle();
+
+
+    if (
+      error ||
+      !data?.final_state
+    ) {
+      if (error) {
+        console.error(
+          "Completed Daily restore failed:",
+          error
+        );
+      }
+
+      return false;
+    }
+
+
+    const finalState =
+      data.final_state;
+
+
+    grid =
+      (finalState.grid || [])
+        .map(
+          row =>
+            row.map(
+              cardFromRecordedText
+            )
+        );
+
+
+    foundations =
+      (finalState.foundations || [])
+        .map(
+          stack =>
+            stack.map(
+              cardFromRecordedText
+            )
+        );
+
+
+    // Recorder stores the draw pile
+    // in next-card-first order.
+    drawPile =
+      [
+        ...(
+          finalState
+            .draw_pile_next_first ||
+          []
+        )
+      ]
+        .reverse()
+        .map(
+          cardFromRecordedText
+        );
+
+
+    score =
+      finalState.score ??
+      data.score ??
+      0;
+
+    moves =
+      finalState.moves ??
+      data.moves ??
+      0;
+
+
+    firstPlacement =
+      data.first_placement ||
+      null;
+
+    entropyProfile =
+      data.entropy_profile ||
+      {};
+
+
+    originalShuffle =
+      data.starting_state
+        ?.original_shuffle ||
+      [];
+
+
+    originalLayout =
+      (
+        data.starting_state
+          ?.grid ||
+        []
+      ).map(
+        row =>
+          row.map(
+            card =>
+              card || "__"
+          )
+      );
+
+
+    activeSoloRunId =
+      data.id;
+
+    selected = null;
+
+    history = [];
+
+    undoSnapshot = null;
+
+    undoAvailable = false;
+
+    runCompleted = true;
+
+
+    saveActiveRun();
+
+    render();
+
+    return true;
+  }
+
+
   const SOLO_RUN_RECORDER_PREFIX =
   "solentropy.soloRunRecorder.v1.";
 
@@ -8275,7 +8516,9 @@ async function submitDailyResult(
     async function loadLongestStreaksLeaderboard() {
       const { data, error } = await supabaseClient
         .from("players")
-        .select("id, display_name, best_streak")
+        .select(
+          "id, display_name, best_streak, active_streak"
+        )
         .gt("best_streak", 0)
         .order("best_streak", { ascending: false })
         .limit(1000);
@@ -8286,6 +8529,18 @@ async function submitDailyResult(
       }
 
       return data;
+    }
+
+    function streakLeaderboardValue(
+      row
+    ) {
+      const isActive =
+        (row.active_streak || 0) > 0 &&
+        row.active_streak === row.best_streak;
+
+      return isActive
+        ? `${row.best_streak} <span class="active-streak-indicator">🔥</span>`
+        : row.best_streak;
     }
 
     async function loadAverageEntropyLeaderboard() {
@@ -8542,7 +8797,7 @@ async function submitDailyResult(
         const rows = board.topTen.map((row, index) =>
           leaderboardRow(index + 1, row.id, [
             playerName(row),
-            row.best_streak
+            streakLeaderboardValue(row)
           ])
         );
 
@@ -8559,7 +8814,9 @@ async function submitDailyResult(
               board.currentRow.id,
               [
                 playerName(board.currentRow),
-                board.currentRow.best_streak
+                streakLeaderboardValue(
+                  board.currentRow
+                )
               ]
             )
           );
@@ -14938,7 +15195,10 @@ function updateGameModeView() {
               : null,
 
           moves_after:
-            moves
+            moves,
+
+          state_after:
+            soloRecorderBoardState()
         });
       log(`${moves}. ${cardNotation(fromCard)}: ${fromNotation} -> ${toNotation}`);
       selected = null;
