@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.10.23.23:08.
+Prototype version 2026.10.27.11:03.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -8463,9 +8463,6 @@ async function submitDailyResult(
       const payload = {
         active_streak: profileStats.currentDailyPerfectStreak || 0,
         best_streak: profileStats.bestDailyPerfectStreak || 0,
-        completed_dailies: profileStats.completedRuns || 0,
-        total_entropy: profileStats.totalEntropy || 0,
-        total_moves: profileStats.totalMoves || 0,
         updated_at: new Date().toISOString()
       };
 
@@ -8544,55 +8541,55 @@ async function submitDailyResult(
     }
 
     async function loadAverageEntropyLeaderboard() {
-      const { data, error } = await supabaseClient
-        .from("daily_results")
-        .select(`
-          player_id,
-          score,
-          moves,
-          players!daily_results_player_id_players_fkey (
-            display_name
-          )
-        `);
+      const {
+        data,
+        error
+      } =
+        await supabaseClient.rpc(
+          "get_average_entropy_leaderboard"
+        );
+
 
       if (error) {
-        console.error("Average entropy leaderboard load failed:", error);
+        console.error(
+          "Average entropy leaderboard load failed:",
+          error
+        );
+
         return [];
       }
 
-      const byPlayer = {};
 
-      data.forEach(row => {
-        if (!byPlayer[row.player_id]) {
-          byPlayer[row.player_id] = {
-            id: row.player_id,
-            display_name: row.players?.display_name,
-            completed_dailies: 0,
-            total_entropy: 0,
-            total_moves: 0
-          };
-        }
+      return (data || []).map(
+        row => ({
+          ...row,
 
-        byPlayer[row.player_id].completed_dailies++;
-        byPlayer[row.player_id].total_entropy += row.score;
-        byPlayer[row.player_id].total_moves += row.moves;
-      });
+          completed_dailies:
+            Number(
+              row.completed_dailies
+            ),
 
-      return Object.values(byPlayer)
-        .filter(player => player.completed_dailies >= 10)
-        .map(player => ({
-          ...player,
-          average_entropy: player.total_entropy / player.completed_dailies,
-          average_moves: player.total_moves / player.completed_dailies
-        }))
-        .sort((a, b) =>
-          a.average_entropy - b.average_entropy ||
-          a.average_moves - b.average_moves
-        )
-        .sort((a, b) =>
-          a.average_entropy - b.average_entropy ||
-          a.average_moves - b.average_moves
-        );
+          total_entropy:
+            Number(
+              row.total_entropy
+            ),
+
+          total_moves:
+            Number(
+              row.total_moves
+            ),
+
+          average_entropy:
+            Number(
+              row.average_entropy
+            ),
+
+          average_moves:
+            Number(
+              row.average_moves
+            )
+        })
+      );
     }
 
     function leaderboardWithCurrentPlayer(rows, getPlayerId) {
