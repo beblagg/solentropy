@@ -15071,9 +15071,11 @@ function updateGameModeView() {
     }
 
     function showEntropyPop(foundationIndex, entropy) {
-  const slot = document.querySelector(
-    `.slot[data-foundation="${foundationIndex}"]`
-  );
+      const slot = document
+        .getElementById("foundations")
+        ?.querySelector(
+          `.slot[data-foundation="${foundationIndex}"]`
+        );
 
   if (!slot) return;
 
