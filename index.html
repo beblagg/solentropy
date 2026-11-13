@@ -2,7 +2,7 @@
 <!--
 SolEntropy
 Copyright © 2026 Brandon Blagg. All rights reserved.
-Prototype version 2026.10.27.11:03.
+Prototype version 2026.11.13.16:06.
 Do not copy, distribute, modify, or commercialize without permission.
 -->
 <html lang="en">
@@ -6990,6 +6990,7 @@ Do not copy, distribute, modify, or commercialize without permission.
     let originalLayout = [];
     let originalShuffle = [];
     let gameMode = localStorage.getItem("entropy.gameMode") || "daily";
+    let loadedSoloMode = null;
     let activeRandomSeed =
       localStorage.getItem("entropy.activeRandomSeed") || generateShuffleCode();
     let randomSeedMode =
@@ -7215,6 +7216,7 @@ Do not copy, distribute, modify, or commercialize without permission.
         // should not replace it with an older
         // local snapshot.
         if (
+          loadedSoloMode === "daily" &&
           runCompleted &&
           activeDailySeed === today
         ) {
@@ -7992,7 +7994,14 @@ Do not copy, distribute, modify, or commercialize without permission.
         )
         .limit(1)
         .maybeSingle();
-
+        // Don't overwrite another mode if the
+        // player switched tabs during the request.
+        if (
+          gameMode !== "daily" ||
+          currentDailySeed() !== seed
+        ) {
+          return false;
+        }
 
     if (
       error ||
@@ -8102,6 +8111,11 @@ Do not copy, distribute, modify, or commercialize without permission.
 
     runCompleted = true;
 
+    loadedSoloMode = "daily";
+
+    // The server restores the board, but
+    // not the old local move log.
+    logEntries = [];
 
     saveActiveRun();
 
@@ -14206,6 +14220,7 @@ async function leaveInactiveVersusMatch() {
     }
 
     function newGame() {
+      loadedSoloMode = gameMode;
       if (
         activeSoloRunId &&
         !runCompleted
@@ -14311,7 +14326,12 @@ async function leaveInactiveVersusMatch() {
     }
 
     function saveActiveRun() {
-      if (gameMode === "versus") return;
+      if (
+        gameMode === "versus" ||
+        loadedSoloMode !== gameMode
+      ) {
+        return;
+      }
 
       const completedDailySeed =
         localStorage.getItem("entropy.lastCompletedDailySeed");
@@ -14359,7 +14379,44 @@ async function leaveInactiveVersusMatch() {
           localStorage.removeItem(activeRunKey(mode));
           return false;
         }
+        // Detect a Random game accidentally
+        // saved under the Daily storage key.
+        if (
+          mode === "daily" &&
+          parsed.soloRunId
+        ) {
+          try {
+            const randomSaved =
+              localStorage.getItem(
+                "entropy.run.random"
+              );
 
+            const randomRun =
+              randomSaved
+                ? JSON.parse(randomSaved)
+                : null;
+
+            if (
+              randomRun?.soloRunId ===
+              parsed.soloRunId
+            ) {
+              console.warn(
+                "Discarding Daily snapshot containing Random state."
+              );
+
+              localStorage.removeItem(
+                activeRunKey(mode)
+              );
+
+              return false;
+            }
+          } catch (err) {
+            console.warn(
+              "Could not compare Random and Daily saves:",
+              err
+            );
+          }
+        }
         restore(saved);
 
         if (!parsed.soloRunId) {
@@ -14851,6 +14908,7 @@ function updateGameModeView() {
 
     function restore(state) {
       const s = JSON.parse(state);
+      loadedSoloMode = s.gameMode || gameMode;
       drawPile = s.drawPile;
       grid = s.grid;
       foundations = s.foundations;
